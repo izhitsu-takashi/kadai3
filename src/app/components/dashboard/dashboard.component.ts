@@ -1,7 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EmployeeService, Employee } from '../../services/employee.service';
 import { ImportComponent } from '../import/import.component';
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-dashboard',
@@ -10,7 +13,9 @@ import { ImportComponent } from '../import/import.component';
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('personalBurdenChart', { static: false }) personalBurdenChartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('companyBurdenChart', { static: false }) companyBurdenChartRef!: ElementRef<HTMLCanvasElement>;
   appName = 'IMA';
   selectedMenuId: string = 'insurance-list';
   menuItems = [
@@ -39,6 +44,23 @@ export class DashboardComponent implements OnInit {
   availableMonths: string[] = [];
   selectedMonth: string = '';
 
+  // レポート用
+  reportEmployees: Employee[] = [];
+  reportFilterType: 'month' | 'year' = 'month';
+  reportSelectedMonth: string = '';
+  reportSelectedYear: string = '';
+  availableYears: string[] = [];
+  personalBurdenTotal: number = 0;
+  companyBurdenTotal: number = 0;
+  personalHealthInsurance: number = 0;
+  personalWelfarePension: number = 0;
+  personalNursingInsurance: number = 0;
+  companyHealthInsurance: number = 0;
+  companyWelfarePension: number = 0;
+  companyNursingInsurance: number = 0;
+  personalBurdenChart: any = null;
+  companyBurdenChart: any = null;
+
   columns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
@@ -58,6 +80,27 @@ export class DashboardComponent implements OnInit {
     this.loadAvailableMonths();
     // その後、選択された月のデータを読み込む
     this.loadEmployees();
+    // レポート用のデータも読み込む
+    this.loadReportData();
+  }
+
+  ngAfterViewInit(): void {
+    // ビューが初期化された後にチャートを描画
+    setTimeout(() => {
+      if (this.selectedMenuId === 'reports') {
+        this.updateCharts();
+      }
+    }, 100);
+  }
+
+  ngOnDestroy(): void {
+    // チャートを破棄
+    if (this.personalBurdenChart) {
+      this.personalBurdenChart.destroy();
+    }
+    if (this.companyBurdenChart) {
+      this.companyBurdenChart.destroy();
+    }
   }
 
   loadAvailableMonths(): void {
@@ -212,6 +255,13 @@ export class DashboardComponent implements OnInit {
       // その他のメニューをクリックした場合は通常通り遷移
       this.selectedMenuId = menuId;
       this.isSettingsExpanded = false;
+      
+      // レポートページに切り替えた場合はチャートを更新
+      if (menuId === 'reports') {
+        setTimeout(() => {
+          this.updateCharts();
+        }, 100);
+      }
     }
   }
 
@@ -273,5 +323,239 @@ export class DashboardComponent implements OnInit {
 
   getCompanyBurden(employee: Employee): number {
     return employee.会社負担額 ?? employee.companyBurden ?? 0;
+  }
+
+  // レポート関連のメソッド
+  loadReportData(): void {
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        this.reportEmployees = data;
+        
+        // 利用可能な年を取得
+        const yearsSet = new Set<string>();
+        data.forEach(emp => {
+          const month = emp.月 || emp.month;
+          if (month) {
+            // "2025年04月" から "2025" を抽出
+            const yearMatch = month.match(/^(\d{4})年/);
+            if (yearMatch) {
+              yearsSet.add(yearMatch[1]);
+            }
+          }
+        });
+        this.availableYears = Array.from(yearsSet).sort();
+        
+        // デフォルトで最初の月を選択
+        if (this.availableMonths.length > 0 && !this.reportSelectedMonth) {
+          this.reportSelectedMonth = this.availableMonths[0];
+        }
+        
+        // デフォルトで最初の年を選択
+        if (this.availableYears.length > 0 && !this.reportSelectedYear) {
+          this.reportSelectedYear = this.availableYears[0];
+        }
+        
+        this.calculateReportTotals();
+      },
+      error: (error) => {
+        console.error('Error loading report data:', error);
+      }
+    });
+  }
+
+  onReportFilterTypeChange(type: 'month' | 'year'): void {
+    this.reportFilterType = type;
+    this.calculateReportTotals();
+    setTimeout(() => {
+      this.updateCharts();
+    }, 100);
+  }
+
+  onReportMonthChange(month: string): void {
+    this.reportSelectedMonth = month;
+    this.calculateReportTotals();
+    setTimeout(() => {
+      this.updateCharts();
+    }, 100);
+  }
+
+  onReportYearChange(year: string): void {
+    this.reportSelectedYear = year;
+    this.calculateReportTotals();
+    setTimeout(() => {
+      this.updateCharts();
+    }, 100);
+  }
+
+  calculateReportTotals(): void {
+    let filteredEmployees: Employee[] = [];
+    
+    if (this.reportFilterType === 'month') {
+      // 月単位でフィルタリング
+      filteredEmployees = this.reportEmployees.filter(emp => {
+        const month = emp.月 || emp.month;
+        return month === this.reportSelectedMonth;
+      });
+    } else {
+      // 年単位でフィルタリング
+      filteredEmployees = this.reportEmployees.filter(emp => {
+        const month = emp.月 || emp.month;
+        if (month) {
+          const yearMatch = month.match(/^(\d{4})年/);
+          if (yearMatch) {
+            return yearMatch[1] === this.reportSelectedYear;
+          }
+        }
+        return false;
+      });
+    }
+    
+    // 社員負担額の合計を計算（各項目別）
+    this.personalHealthInsurance = filteredEmployees.reduce((sum, emp) => {
+      return sum + (this.getHealthInsurance(emp) / 2); // 本人負担は半額
+    }, 0);
+    
+    this.personalWelfarePension = filteredEmployees.reduce((sum, emp) => {
+      return sum + (this.getWelfarePension(emp) / 2); // 本人負担は半額
+    }, 0);
+    
+    this.personalNursingInsurance = filteredEmployees.reduce((sum, emp) => {
+      return sum + (this.getNursingInsurance(emp) / 2); // 本人負担は半額
+    }, 0);
+    
+    this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
+    
+    // 会社負担額の合計を計算（各項目別）
+    this.companyHealthInsurance = filteredEmployees.reduce((sum, emp) => {
+      return sum + (this.getHealthInsurance(emp) / 2); // 会社負担は半額
+    }, 0);
+    
+    this.companyWelfarePension = filteredEmployees.reduce((sum, emp) => {
+      return sum + (this.getWelfarePension(emp) / 2); // 会社負担は半額
+    }, 0);
+    
+    this.companyNursingInsurance = filteredEmployees.reduce((sum, emp) => {
+      return sum + (this.getNursingInsurance(emp) / 2); // 会社負担は半額
+    }, 0);
+    
+    this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
+  }
+
+  updateCharts(): void {
+    if (!this.personalBurdenChartRef || !this.companyBurdenChartRef) {
+      return;
+    }
+
+    // 既存のチャートを破棄
+    if (this.personalBurdenChart) {
+      this.personalBurdenChart.destroy();
+    }
+    if (this.companyBurdenChart) {
+      this.companyBurdenChart.destroy();
+    }
+
+    // 社員負担額の円グラフ（健康保険料、厚生年金保険料、介護保険料の3項目）
+    const personalCtx = this.personalBurdenChartRef.nativeElement.getContext('2d');
+    if (personalCtx) {
+      this.personalBurdenChart = new Chart(personalCtx, {
+        type: 'pie',
+        data: {
+          labels: ['健康保険料', '厚生年金保険料', '介護保険料'],
+          datasets: [{
+            data: [
+              this.personalHealthInsurance,
+              this.personalWelfarePension,
+              this.personalNursingInsurance
+            ],
+            backgroundColor: [
+              '#90EE90', // 薄い緑
+              '#FFB6C1', // 薄い赤
+              '#87CEEB'  // 水色
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                padding: 15,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const label = context.label || '';
+                  const value = context.parsed || 0;
+                  const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return `${label}: ${value.toLocaleString()}円 (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 会社負担額の円グラフ（健康保険料、厚生年金保険料、介護保険料の3項目）
+    const companyCtx = this.companyBurdenChartRef.nativeElement.getContext('2d');
+    if (companyCtx) {
+      this.companyBurdenChart = new Chart(companyCtx, {
+        type: 'pie',
+        data: {
+          labels: ['健康保険料', '厚生年金保険料', '介護保険料'],
+          datasets: [{
+            data: [
+              this.companyHealthInsurance,
+              this.companyWelfarePension,
+              this.companyNursingInsurance
+            ],
+            backgroundColor: [
+              '#90EE90', // 薄い緑
+              '#FFB6C1', // 薄い赤
+              '#87CEEB'  // 水色
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                padding: 15,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const label = context.label || '';
+                  const value = context.parsed || 0;
+                  const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return `${label}: ${value.toLocaleString()}円 (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
   }
 }

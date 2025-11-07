@@ -94,7 +94,80 @@
       <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">
         <app-import></app-import>
       </div>
-      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings'" class="page-message">
+      <div *ngIf="selectedMenuId === 'reports'" class="reports-container">
+        <div class="report-filter-container">
+          <div class="filter-type-selector">
+            <label class="filter-type-label">表示単位:</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input 
+                  type="radio" 
+                  name="reportFilterType" 
+                  value="month"
+                  [checked]="reportFilterType === 'month'"
+                  (change)="onReportFilterTypeChange('month')">
+                <span>月単位</span>
+              </label>
+              <label class="radio-label">
+                <input 
+                  type="radio" 
+                  name="reportFilterType" 
+                  value="year"
+                  [checked]="reportFilterType === 'year'"
+                  (change)="onReportFilterTypeChange('year')">
+                <span>年単位</span>
+              </label>
+            </div>
+          </div>
+          <div class="filter-selector">
+            <label *ngIf="reportFilterType === 'month'" for="report-month-select" class="filter-label">表示月:</label>
+            <label *ngIf="reportFilterType === 'year'" for="report-year-select" class="filter-label">表示年:</label>
+            <select 
+              *ngIf="reportFilterType === 'month'"
+              id="report-month-select" 
+              class="filter-select"
+              [value]="reportSelectedMonth"
+              (change)="onReportMonthChange($any($event.target).value)">
+              <option *ngFor="let month of availableMonths" [value]="month">
+                {{ month }}
+              </option>
+            </select>
+            <select 
+              *ngIf="reportFilterType === 'year'"
+              id="report-year-select" 
+              class="filter-select"
+              [value]="reportSelectedYear"
+              (change)="onReportYearChange($any($event.target).value)">
+              <option *ngFor="let year of availableYears" [value]="year">
+                {{ year }}年
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="charts-container">
+          <div class="chart-card">
+            <h3 class="chart-title">社員負担額</h3>
+            <div class="chart-wrapper">
+              <canvas #personalBurdenChart></canvas>
+            </div>
+            <div class="chart-total">
+              <p class="total-label">合計額</p>
+              <p class="total-amount">{{ personalBurdenTotal.toLocaleString() }}円</p>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h3 class="chart-title">会社負担額</h3>
+            <div class="chart-wrapper">
+              <canvas #companyBurdenChart></canvas>
+            </div>
+            <div class="chart-total">
+              <p class="total-label">合計額</p>
+              <p class="total-amount">{{ companyBurdenTotal.toLocaleString() }}円</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'reports'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>
