@@ -1,18 +1,29 @@
 import { Injectable } from '@angular/core';
-import { Firestore, collection, collectionData, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { Firestore, collection, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { FirestoreService } from './firestore.service';
 
 export interface Employee {
   id?: string;
-  name: string;
-  standardSalary: number;
-  grade: number;
-  healthInsurance: number;
-  welfarePension: number;
-  nursingInsurance: number;
-  personalBurden: number;
-  companyBurden: number;
+  ID?: number;
+  氏名?: string;
+  標準報酬月額?: number;
+  等級?: number;
+  健康保険料?: number;
+  厚生年金保険料?: number;
+  介護保険料?: number;
+  本人負担額?: number;
+  会社負担額?: number;
+  // 英語キーもサポート（後方互換性のため）
+  name?: string;
+  standardSalary?: number;
+  grade?: number;
+  healthInsurance?: number;
+  welfarePension?: number;
+  nursingInsurance?: number;
+  personalBurden?: number;
+  companyBurden?: number;
 }
 
 @Injectable({
@@ -20,15 +31,27 @@ export interface Employee {
 })
 export class EmployeeService {
   private readonly collectionName = 'employee';
-  private db: Firestore;
+  private db: Firestore | null = null;
 
-  constructor() {
-    // main.tsで初期化されたFirestoreインスタンスを取得
-    this.db = (window as any).firestoreDb;
+  constructor(private firestoreService: FirestoreService) {}
+
+  private getDb(): Firestore | null {
+    if (!this.db) {
+      this.db = this.firestoreService.getFirestore();
+    }
+    return this.db;
   }
 
   getEmployees(): Observable<Employee[]> {
-    const employeesRef = collection(this.db, this.collectionName);
+    const db = this.getDb();
+    if (!db) {
+      // SSR環境やFirestoreが初期化されていない場合は空の配列を返す
+      return new Observable(observer => {
+        observer.next([]);
+        observer.complete();
+      });
+    }
+    const employeesRef = collection(db, this.collectionName);
     return from(getDocs(employeesRef)).pipe(
       map(querySnapshot => {
         return querySnapshot.docs.map(doc => ({
@@ -40,17 +63,29 @@ export class EmployeeService {
   }
 
   addEmployee(employee: Omit<Employee, 'id'>): Promise<any> {
-    const employeesRef = collection(this.db, this.collectionName);
+    const db = this.getDb();
+    if (!db) {
+      return Promise.reject(new Error('Firestore is not available'));
+    }
+    const employeesRef = collection(db, this.collectionName);
     return addDoc(employeesRef, employee);
   }
 
   updateEmployee(id: string, employee: Partial<Employee>): Promise<void> {
-    const employeeDocRef = doc(this.db, `${this.collectionName}/${id}`);
+    const db = this.getDb();
+    if (!db) {
+      return Promise.reject(new Error('Firestore is not available'));
+    }
+    const employeeDocRef = doc(db, `${this.collectionName}/${id}`);
     return updateDoc(employeeDocRef, employee);
   }
 
   deleteEmployee(id: string): Promise<void> {
-    const employeeDocRef = doc(this.db, `${this.collectionName}/${id}`);
+    const db = this.getDb();
+    if (!db) {
+      return Promise.reject(new Error('Firestore is not available'));
+    }
+    const employeeDocRef = doc(db, `${this.collectionName}/${id}`);
     return deleteDoc(employeeDocRef);
   }
 }

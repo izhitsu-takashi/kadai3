@@ -24,34 +24,42 @@
     </aside>
     <main class="dashboard-content">
       <div *ngIf="selectedMenuId === 'insurance-list'" class="table-container">
-        <table class="employee-table">
-          <thead>
-            <tr>
-              <th>社員ID</th>
-              <th>氏名</th>
-              <th>標準報酬月額</th>
-              <th>等級</th>
-              <th>健康保険料</th>
-              <th>厚生年金料</th>
-              <th>介護保険料</th>
-              <th>本人負担額</th>
-              <th>会社負担額</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let employee of employees">
-              <td>{{ employee.id }}</td>
-              <td>{{ employee.name }}</td>
-              <td>{{ employee.standardSalary | number }}</td>
-              <td>{{ employee.grade }}</td>
-              <td>{{ employee.healthInsurance | number }}</td>
-              <td>{{ employee.welfarePension | number }}</td>
-              <td>{{ employee.nursingInsurance | number }}</td>
-              <td>{{ employee.personalBurden | number }}</td>
-              <td>{{ employee.companyBurden | number }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div *ngIf="isLoading" class="loading-message">
+          <p>データを読み込み中...</p>
+        </div>
+        <ng-container *ngIf="!isLoading">
+          <table *ngIf="employees && employees.length > 0" class="employee-table">
+            <thead>
+              <tr>
+                <th>社員ID</th>
+                <th>氏名</th>
+                <th>標準報酬月額</th>
+                <th>等級</th>
+                <th>健康保険料</th>
+                <th>厚生年金料</th>
+                <th>介護保険料</th>
+                <th>本人負担額</th>
+                <th>会社負担額</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let employee of employees">
+                <td>{{ getEmployeeId(employee) }}</td>
+                <td>{{ getEmployeeName(employee) }}</td>
+                <td>{{ getStandardSalary(employee) | number }}</td>
+                <td>{{ getGrade(employee) }}</td>
+                <td>{{ getHealthInsurance(employee) | number }}</td>
+                <td>{{ getWelfarePension(employee) | number }}</td>
+                <td>{{ getNursingInsurance(employee) | number }}</td>
+                <td>{{ getPersonalBurden(employee) | number }}</td>
+                <td>{{ getCompanyBurden(employee) | number }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- <div *ngIf="!employees || employees.length === 0" class="no-data-message">
+            <p>データがありません</p>
+          </div> -->
+        </ng-container>
       </div>
       <div *ngIf="selectedMenuId !== 'insurance-list'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>

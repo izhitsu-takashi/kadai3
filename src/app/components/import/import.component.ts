@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
-import employeeData from '../../../../社員情報テストデータ_firestore用.json';
+import { FirestoreService } from '../../services/firestore.service';
+import { EmployeeService } from '../../services/employee.service';
 
+import employeeData from '../../../../社員情報テストデータ_firestore用.json';
 @Component({
   selector: 'app-import',
   standalone: true,
@@ -47,20 +48,30 @@ export class ImportComponent {
   isImporting = false;
   importResult = '';
 
-  constructor(private firestore: Firestore) {}
+  constructor(
+    private firestoreService: FirestoreService,
+    private employeeService: EmployeeService
+  ) {}
 
   async importData() {
     this.isImporting = true;
     this.importResult = 'インポートを開始します...';
 
     try {
+      const firestore = this.firestoreService.getFirestore();
+      if (!firestore) {
+        this.importResult = 'エラー: Firestoreが初期化されていません。ブラウザ環境で実行してください。';
+        this.isImporting = false;
+        return;
+      }
+
       const employees = employeeData as any[];
       let successCount = 0;
       let errorCount = 0;
 
       for (const employee of employees) {
         try {
-          await addDoc(collection(this.firestore, 'employee'), employee);
+          await this.employeeService.addEmployee(employee);
           successCount++;
         } catch (error) {
           console.error('Error importing employee:', error);
