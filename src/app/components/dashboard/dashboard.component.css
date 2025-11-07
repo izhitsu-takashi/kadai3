@@ -112,6 +112,16 @@
   color: #667eea;
 }
 
+.menu-item.active {
+  background: #667eea;
+  color: white;
+}
+
+.menu-item.active:hover {
+  background: #5568d3;
+  color: white;
+}
+
 .menu-item:first-child {
   border-top: none;
 }
@@ -190,4 +200,18 @@
 .employee-table tbody td:nth-child(1),
 .employee-table tbody td:nth-child(2) {
   text-align: left;
+}
+
+.page-message {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.page-message p {
+  font-size: 1.5rem;
+  color: #4a5568;
+  margin: 0;
 }

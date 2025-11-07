@@ -22,12 +22,22 @@ export interface Employee {
 })
 export class DashboardComponent {
   appName = 'IMA';
+  selectedMenuId: string = 'insurance-list';
   menuItems = [
     { label: '保険料一覧', id: 'insurance-list' },
     { label: '書類作成', id: 'documents' },
     { label: '保険料レポート', id: 'reports' },
     { label: '設定', id: 'settings' }
   ];
+
+  selectMenu(menuId: string): void {
+    this.selectedMenuId = menuId;
+  }
+
+  getSelectedMenuLabel(): string {
+    const selectedItem = this.menuItems.find(item => item.id === this.selectedMenuId);
+    return selectedItem ? selectedItem.label : '';
+  }
 
   employees: Employee[] = [
     {

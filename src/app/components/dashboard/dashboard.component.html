@@ -14,14 +14,16 @@
         <button 
           *ngFor="let item of menuItems" 
           class="menu-item" 
+          [class.active]="selectedMenuId === item.id"
           type="button"
-          [attr.data-id]="item.id">
+          [attr.data-id]="item.id"
+          (click)="selectMenu(item.id)">
           {{ item.label }}
         </button>
       </nav>
     </aside>
     <main class="dashboard-content">
-      <div class="table-container">
+      <div *ngIf="selectedMenuId === 'insurance-list'" class="table-container">
         <table class="employee-table">
           <thead>
             <tr>
@@ -50,6 +52,9 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div *ngIf="selectedMenuId !== 'insurance-list'" class="page-message">
+        <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>
   </div>
