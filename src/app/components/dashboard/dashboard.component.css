@@ -473,6 +473,73 @@
   transform: scale(0.98);
 }
 
+.health-insurance-settings-form {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.health-insurance-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-select {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #2d3748;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-select:disabled {
+  background: #f7fafc;
+  color: #4a5568;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.insurance-rate-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.insurance-rate-input-wrapper .form-input {
+  padding-right: 2.5rem;
+}
+
+.percentage-symbol {
+  position: absolute;
+  left: 260px;
+  font-size: 1rem;
+  color: #4a5568;
+  pointer-events: none;
+}
+
+.form-input.error {
+  border-color: #e53e3e;
+  background-color: #fed7d7;
+}
+
+.error-message {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #e53e3e;
+  font-weight: 500;
+}
+
 .settings-menu {
   display: flex;
   flex-direction: column;
@@ -543,6 +610,16 @@
 
 .radio-label input[type="radio"] {
   cursor: pointer;
+}
+
+.radio-label input[type="radio"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.radio-label:has(input[type="radio"]:disabled) {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .filter-selector {

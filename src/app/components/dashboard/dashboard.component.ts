@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EmployeeService, Employee } from '../../services/employee.service';
+import { FirestoreService } from '../../services/firestore.service';
 import { ImportComponent } from '../import/import.component';
 import { Chart, registerables } from 'chart.js';
+import { Firestore, collection, doc, setDoc, getDoc } from 'firebase/firestore';
 
 Chart.register(...registerables);
 
@@ -46,6 +48,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   isCompanyInfoSaved: boolean = false;
   isCompanyInfoEditing: boolean = true;
+
+  // 健康保険設定用
+  healthInsuranceType: 'kyokai' | 'kumiai' = 'kyokai';
+  prefecture: string = '';
+  insuranceRate: number = 0;
+  insuranceRateDisplay: string = '';
+  insuranceRateError: string = '';
+  isHealthInsuranceSaved: boolean = false;
+  isHealthInsuranceEditing: boolean = true;
+
+  prefectures = [
+    '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+    '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+    '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+    '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+    '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+    '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+    '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+  ];
 
   employees: Employee[] = [];
   sortedEmployees: Employee[] = [];
@@ -89,6 +110,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private employeeService: EmployeeService,
+    private firestoreService: FirestoreService,
     private router: Router
   ) {}
 
@@ -99,6 +121,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadEmployees();
     // レポート用のデータも読み込む
     this.loadReportData();
+    // 保存された設定情報を読み込む
+    this.loadCompanyInfo();
+    this.loadHealthInsuranceSettings();
   }
 
   ngAfterViewInit(): void {
@@ -584,22 +609,255 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 500);
   }
 
-  onCompanyInfoSubmit(): void {
-    // フォーム送信処理
-    console.log('企業情報を保存:', this.companyInfo);
-    // ここでFirestoreに保存する処理を追加できます
-    
-    // 保存完了の状態に変更
-    this.isCompanyInfoSaved = true;
-    this.isCompanyInfoEditing = false;
-    
-    // アラートで保存完了を通知
-    alert('保存しました');
+  async loadCompanyInfo(): Promise<void> {
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'companyInfo', 'settings');
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        this.companyInfo = {
+          companyName: data['companyName'] || '',
+          address: data['address'] || '',
+          corporateNumber: data['corporateNumber'] || '',
+          officeNumber: data['officeNumber'] || ''
+        };
+        // データが存在する場合は保存済み状態にする
+        if (this.companyInfo.companyName || this.companyInfo.address || 
+            this.companyInfo.corporateNumber || this.companyInfo.officeNumber) {
+          this.isCompanyInfoSaved = true;
+          this.isCompanyInfoEditing = false;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading company info:', error);
+    }
+  }
+
+  async onCompanyInfoSubmit(): Promise<void> {
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      alert('Firestoreが初期化されていません');
+      return;
+    }
+
+    try {
+      // Firestoreに保存
+      const docRef = doc(db, 'companyInfo', 'settings');
+      await setDoc(docRef, {
+        companyName: this.companyInfo.companyName,
+        address: this.companyInfo.address,
+        corporateNumber: this.companyInfo.corporateNumber,
+        officeNumber: this.companyInfo.officeNumber,
+        updatedAt: new Date()
+      }, { merge: true });
+
+      // 保存完了の状態に変更
+      this.isCompanyInfoSaved = true;
+      this.isCompanyInfoEditing = false;
+      
+      // アラートで保存完了を通知
+      alert('保存しました');
+    } catch (error) {
+      console.error('Error saving company info:', error);
+      alert('保存に失敗しました');
+    }
   }
 
   onEditCompanyInfo(): void {
     // 編集モードに切り替え
     this.isCompanyInfoEditing = true;
     this.isCompanyInfoSaved = false;
+  }
+
+  // 健康保険設定関連のメソッド
+  onHealthInsuranceTypeChange(type: 'kyokai' | 'kumiai'): void {
+    this.healthInsuranceType = type;
+    // 種別変更時に値をリセット
+    if (type === 'kyokai') {
+      this.insuranceRate = 0;
+    } else {
+      this.prefecture = '';
+    }
+  }
+
+  async loadHealthInsuranceSettings(): Promise<void> {
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'healthInsuranceSettings', 'settings');
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        this.healthInsuranceType = data['type'] || 'kyokai';
+        this.prefecture = data['prefecture'] || '';
+        this.insuranceRate = data['insuranceRate'] || 0;
+        this.insuranceRateDisplay = this.insuranceRate > 0 ? this.insuranceRate.toString() : '';
+        
+        // データが存在する場合は保存済み状態にする
+        if ((this.healthInsuranceType === 'kyokai' && this.prefecture) ||
+            (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0)) {
+          this.isHealthInsuranceSaved = true;
+          this.isHealthInsuranceEditing = false;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading health insurance settings:', error);
+    }
+  }
+
+  async onHealthInsuranceSubmit(): Promise<void> {
+    // バリデーション
+    if (this.healthInsuranceType === 'kumiai') {
+      // 保険料率のバリデーション
+      if (this.insuranceRate === null || this.insuranceRate === undefined || isNaN(this.insuranceRate)) {
+        alert('保険料率を正しく入力してください');
+        return;
+      }
+      
+      // 範囲チェック
+      if (this.insuranceRate < 0 || this.insuranceRate > 100) {
+        alert('保険料率は0〜100の範囲で入力してください');
+        return;
+      }
+    }
+
+    if (this.healthInsuranceType === 'kyokai' && !this.prefecture) {
+      alert('都道府県を選択してください');
+      return;
+    }
+    
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      alert('Firestoreが初期化されていません');
+      return;
+    }
+
+    try {
+      // Firestoreに保存
+      const docRef = doc(db, 'healthInsuranceSettings', 'settings');
+      await setDoc(docRef, {
+        type: this.healthInsuranceType,
+        prefecture: this.prefecture,
+        insuranceRate: this.insuranceRate,
+        updatedAt: new Date()
+      }, { merge: true });
+
+      // 保存完了の状態に変更
+      this.isHealthInsuranceSaved = true;
+      this.isHealthInsuranceEditing = false;
+      
+      // アラートで保存完了を通知
+      alert('保存しました');
+    } catch (error) {
+      console.error('Error saving health insurance settings:', error);
+      alert('保存に失敗しました');
+    }
+  }
+
+  onInsuranceRateInput(event: any): void {
+    // エラーメッセージをクリア
+    this.insuranceRateError = '';
+    
+    // 入力値を取得
+    let value = event.target.value;
+    
+    // 空の場合は0に設定して終了
+    if (value === '' || value === null || value === undefined) {
+      this.insuranceRate = 0;
+      this.insuranceRateDisplay = '';
+      return;
+    }
+    
+    // %記号を削除（ユーザーが入力した場合）
+    value = value.replace(/%/g, '');
+    
+    // 数字と小数点以外の文字が含まれているかチェック
+    if (!/^[0-9.]*$/.test(value)) {
+      this.insuranceRateError = '数字と小数点のみ入力できます';
+      event.target.value = this.insuranceRateDisplay;
+      return;
+    }
+    
+    // 複数の小数点を1つに統一
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // 先頭の0を削除（ただし、0.XXの形式は許可）
+    if (value.length > 1 && value[0] === '0' && value[1] !== '.') {
+      value = value.replace(/^0+/, '');
+      if (value === '' || value === '.') {
+        value = '0';
+      }
+    }
+    
+    // 数値に変換
+    const numValue = parseFloat(value);
+    
+    // 負の数のチェック
+    if (value.includes('-')) {
+      this.insuranceRateError = '負の数は入力できません';
+      event.target.value = this.insuranceRateDisplay;
+      return;
+    }
+    
+    // 有効な数値の場合のみ更新
+    if (!isNaN(numValue)) {
+      // 100を超える場合は100に制限
+      if (numValue > 100) {
+        this.insuranceRate = 100;
+        this.insuranceRateDisplay = '100';
+        event.target.value = '100';
+      } else {
+        this.insuranceRate = numValue;
+        // 小数点以下2桁まで表示
+        if (value.includes('.')) {
+          const decimalParts = value.split('.');
+          if (decimalParts[1] && decimalParts[1].length > 2) {
+            value = numValue.toFixed(2);
+          }
+        }
+        this.insuranceRateDisplay = value;
+        event.target.value = value;
+      }
+    } else if (value !== '' && value !== '.') {
+      // 無効な値の場合
+      this.insuranceRateError = '正しい数値を入力してください';
+      event.target.value = this.insuranceRateDisplay;
+    } else {
+      this.insuranceRateDisplay = value;
+    }
+  }
+
+  onInsuranceRateBlur(): void {
+    // エラーメッセージをクリア
+    this.insuranceRateError = '';
+    
+    // フォーカスが外れた時に値を正規化
+    if (this.insuranceRate !== null && this.insuranceRate !== undefined && !isNaN(this.insuranceRate)) {
+      // 小数点以下2桁に統一
+      this.insuranceRate = parseFloat(this.insuranceRate.toFixed(2));
+      this.insuranceRateDisplay = this.insuranceRate.toString();
+    } else if (this.insuranceRateDisplay === '' || this.insuranceRateDisplay === '.') {
+      this.insuranceRate = 0;
+      this.insuranceRateDisplay = '';
+    }
+  }
+
+  onEditHealthInsurance(): void {
+    // 編集モードに切り替え
+    this.isHealthInsuranceEditing = true;
+    this.isHealthInsuranceSaved = false;
   }
 }

@@ -158,7 +158,93 @@
           </form>
         </div>
       </div>
-      <div *ngIf="selectedMenuId === 'health-insurance-settings' || selectedMenuId === 'insurance-rate-inquiry'" class="settings-page-container">
+      <div *ngIf="selectedMenuId === 'health-insurance-settings'" class="settings-page-container">
+        <div class="health-insurance-settings-form">
+          <h2 class="form-title">健康保険設定</h2>
+          <form (ngSubmit)="onHealthInsuranceSubmit()" class="health-insurance-form">
+            <div class="form-group">
+              <label class="form-label">健康保険種別</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="healthInsuranceType" 
+                    value="kyokai"
+                    [(ngModel)]="healthInsuranceType"
+                    [disabled]="!isHealthInsuranceEditing"
+                    (change)="onHealthInsuranceTypeChange('kyokai')">
+                  <span>協会けんぽ</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="healthInsuranceType" 
+                    value="kumiai"
+                    [(ngModel)]="healthInsuranceType"
+                    [disabled]="!isHealthInsuranceEditing"
+                    (change)="onHealthInsuranceTypeChange('kumiai')">
+                  <span>組合保険</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 協会けんぽの場合のフォーム -->
+            <div *ngIf="healthInsuranceType === 'kyokai'" class="form-group">
+              <label for="prefecture" class="form-label">都道府県</label>
+              <select 
+                id="prefecture" 
+                class="form-select"
+                [(ngModel)]="prefecture"
+                name="prefecture"
+                [disabled]="!isHealthInsuranceEditing">
+                <option value="">都道府県を選択してください</option>
+                <option *ngFor="let pref of prefectures" [value]="pref">
+                  {{ pref }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 組合保険の場合のフォーム -->
+            <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
+              <label for="insuranceRate" class="form-label">保険料率</label>
+              <div class="insurance-rate-input-wrapper">
+                <input 
+                  type="text" 
+                  id="insuranceRate" 
+                  class="form-input"
+                  [class.error]="insuranceRateError"
+                  [value]="insuranceRateDisplay"
+                  name="insuranceRate"
+                  [disabled]="!isHealthInsuranceEditing"
+                  placeholder="保険料率を入力"
+                  (input)="onInsuranceRateInput($event)"
+                  (blur)="onInsuranceRateBlur()">
+                <span class="percentage-symbol">%</span>
+              </div>
+              <div *ngIf="insuranceRateError" class="error-message">
+                {{ insuranceRateError }}
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button 
+                *ngIf="isHealthInsuranceEditing" 
+                type="submit" 
+                class="submit-button">
+                保存
+              </button>
+              <button 
+                *ngIf="!isHealthInsuranceEditing" 
+                type="button" 
+                class="edit-button"
+                (click)="onEditHealthInsurance()">
+                編集
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div *ngIf="selectedMenuId === 'insurance-rate-inquiry'" class="settings-page-container">
         <div class="page-message">
           <p>{{ getSettingsSubMenuLabel() }}のページです。</p>
         </div>
