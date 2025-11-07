@@ -1,0 +1,56 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <div class="header-content">
+      <div class="app-name">{{ appName }}</div>
+      <div class="header-actions">
+        <button class="notification-button" type="button">お知らせ</button>
+        <button class="logout-button" type="button">ログアウト</button>
+      </div>
+    </div>
+  </header>
+  <div class="dashboard-body">
+    <aside class="sidebar">
+      <nav class="sidebar-menu">
+        <button 
+          *ngFor="let item of menuItems" 
+          class="menu-item" 
+          type="button"
+          [attr.data-id]="item.id">
+          {{ item.label }}
+        </button>
+      </nav>
+    </aside>
+    <main class="dashboard-content">
+      <div class="table-container">
+        <table class="employee-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>氏名</th>
+              <th>標準報酬月額</th>
+              <th>等級</th>
+              <th>健康保険料</th>
+              <th>厚生年金料</th>
+              <th>介護保険料</th>
+              <th>本人負担額</th>
+              <th>会社負担額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let employee of employees">
+              <td>{{ employee.id }}</td>
+              <td>{{ employee.name }}</td>
+              <td>{{ employee.standardSalary | number }}</td>
+              <td>{{ employee.grade }}</td>
+              <td>{{ employee.healthInsurance | number }}</td>
+              <td>{{ employee.welfarePension | number }}</td>
+              <td>{{ employee.nursingInsurance | number }}</td>
+              <td>{{ employee.personalBurden | number }}</td>
+              <td>{{ employee.companyBurden | number }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
