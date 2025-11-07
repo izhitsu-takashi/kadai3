@@ -4,7 +4,13 @@
       <div class="app-name">{{ appName }}</div>
       <div class="header-actions">
         <button class="notification-button" type="button">お知らせ</button>
-        <button class="logout-button" type="button">ログアウト</button>
+        <button 
+          class="logout-button" 
+          type="button"
+          [disabled]="isLoggingOut"
+          (click)="onLogout()">
+          {{ isLoggingOut ? 'ログアウト中' : 'ログアウト' }}
+        </button>
       </div>
     </div>
   </header>
@@ -86,7 +92,7 @@
           </ng-container>
         </div>
       </div>
-      <div *ngIf="selectedMenuId === 'company-settings' || selectedMenuId === 'health-insurance-settings'" class="settings-page-container">
+      <div *ngIf="selectedMenuId === 'company-settings' || selectedMenuId === 'health-insurance-settings' || selectedMenuId === 'insurance-rate-inquiry'" class="settings-page-container">
         <div class="page-message">
           <p>{{ getSettingsSubMenuLabel() }}のページです。</p>
         </div>
@@ -167,7 +173,7 @@
           </div>
         </div>
       </div>
-      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'reports'" class="page-message">
+      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'reports'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>

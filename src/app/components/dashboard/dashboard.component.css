@@ -65,8 +65,14 @@
   color: white;
 }
 
-.logout-button:hover {
+.logout-button:hover:not(:disabled) {
   background: #5568d3;
+}
+
+.logout-button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .dashboard-body {

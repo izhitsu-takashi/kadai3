@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
   styleUrl: './login.component.css'
 })
 export class LoginComponent {
-  appName = 'IMA';
+  appName = 'Easy保険管理';
   description = '社会保険料を簡単に管理';
 
   constructor(private router: Router) {}

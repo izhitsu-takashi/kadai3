@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { EmployeeService, Employee } from '../../services/employee.service';
 import { ImportComponent } from '../import/import.component';
 import { Chart, registerables } from 'chart.js';
@@ -16,7 +17,7 @@ Chart.register(...registerables);
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('personalBurdenChart', { static: false }) personalBurdenChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('companyBurdenChart', { static: false }) companyBurdenChartRef!: ElementRef<HTMLCanvasElement>;
-  appName = 'IMA';
+  appName = 'Easy保険管理';
   selectedMenuId: string = 'insurance-list';
   menuItems = [
     { label: '保険料一覧', id: 'insurance-list' },
@@ -28,10 +29,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   settingsSubMenus = [
     { label: '企業情報設定', id: 'company-settings' },
     { label: '健康保険設定', id: 'health-insurance-settings' },
-    { label: '社員情報設定', id: 'employee-settings' }
+    { label: '社員情報設定', id: 'employee-settings' },
+    { label: '保険料率照会', id: 'insurance-rate-inquiry' }
   ];
 
   isSettingsExpanded: boolean = false;
+  isLoggingOut: boolean = false;
 
   employees: Employee[] = [];
   sortedEmployees: Employee[] = [];
@@ -73,7 +76,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
   ];
 
-  constructor(private employeeService: EmployeeService) {}
+  constructor(
+    private employeeService: EmployeeService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     // まずすべてのデータを読み込んで利用可能な月のリストを取得
@@ -557,5 +563,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
     }
+  }
+
+  onLogout(): void {
+    this.isLoggingOut = true;
+    // 少し遅延を入れてログアウト中の表示を見せる
+    setTimeout(() => {
+      this.router.navigateByUrl('/login');
+    }, 500);
   }
 }
