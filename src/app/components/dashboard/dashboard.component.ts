@@ -19,6 +19,14 @@ export class DashboardComponent implements OnInit {
     { label: '設定', id: 'settings' }
   ];
 
+  settingsSubMenus = [
+    { label: '企業情報設定', id: 'company-settings' },
+    { label: '健康保険設定', id: 'health-insurance-settings' },
+    { label: '社員情報設定', id: 'employee-settings' }
+  ];
+
+  isSettingsExpanded: boolean = false;
+
   employees: Employee[] = [];
   sortedEmployees: Employee[] = [];
   isLoading = false;
@@ -153,12 +161,38 @@ export class DashboardComponent implements OnInit {
   }
 
   selectMenu(menuId: string): void {
-    this.selectedMenuId = menuId;
+    if (menuId === 'settings') {
+      // 設定ボタンをクリックした場合は、展開/折りたたみを切り替え
+      this.isSettingsExpanded = !this.isSettingsExpanded;
+      // 設定ページには遷移しない（サブメニューを表示するだけ）
+    } else {
+      // その他のメニューをクリックした場合は通常通り遷移
+      this.selectedMenuId = menuId;
+      this.isSettingsExpanded = false;
+    }
+  }
+
+  selectSettingsSubMenu(subMenuId: string): void {
+    // サブメニューをクリックした場合は、そのページに遷移
+    this.selectedMenuId = subMenuId;
+  }
+
+  isSettingsSubMenuSelected(subMenuId: string): boolean {
+    return this.selectedMenuId === subMenuId;
+  }
+
+  isSettingsSubMenuActive(): boolean {
+    return this.settingsSubMenus.some(subMenu => subMenu.id === this.selectedMenuId);
   }
 
   getSelectedMenuLabel(): string {
     const selectedItem = this.menuItems.find(item => item.id === this.selectedMenuId);
     return selectedItem ? selectedItem.label : '';
+  }
+
+  getSettingsSubMenuLabel(): string {
+    const selectedSubMenu = this.settingsSubMenus.find(subMenu => subMenu.id === this.selectedMenuId);
+    return selectedSubMenu ? selectedSubMenu.label : '';
   }
 
   // データアクセサー（日本語キーと英語キーの両方に対応）

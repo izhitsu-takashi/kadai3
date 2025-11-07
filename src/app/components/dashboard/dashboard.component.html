@@ -11,15 +11,27 @@
   <div class="dashboard-body">
     <aside class="sidebar">
       <nav class="sidebar-menu">
-        <button 
-          *ngFor="let item of menuItems" 
-          class="menu-item" 
-          [class.active]="selectedMenuId === item.id"
-          type="button"
-          [attr.data-id]="item.id"
-          (click)="selectMenu(item.id)">
-          {{ item.label }}
-        </button>
+        <ng-container *ngFor="let item of menuItems">
+          <button 
+            class="menu-item" 
+            [class.active]="selectedMenuId === item.id || (item.id === 'settings' && (isSettingsExpanded || isSettingsSubMenuActive()))"
+            type="button"
+            [attr.data-id]="item.id"
+            (click)="selectMenu(item.id)">
+            {{ item.label }}
+          </button>
+          <!-- 設定のサブメニュー -->
+          <div *ngIf="item.id === 'settings' && isSettingsExpanded" class="settings-submenu">
+            <button 
+              *ngFor="let subMenu of settingsSubMenus" 
+              class="submenu-item" 
+              [class.active]="isSettingsSubMenuSelected(subMenu.id)"
+              type="button"
+              (click)="selectSettingsSubMenu(subMenu.id)">
+              {{ subMenu.label }}
+            </button>
+          </div>
+        </ng-container>
       </nav>
     </aside>
     <main class="dashboard-content">
@@ -60,7 +72,12 @@
           </div> -->
         </ng-container>
       </div>
-      <div *ngIf="selectedMenuId !== 'insurance-list'" class="page-message">
+      <div *ngIf="selectedMenuId === 'company-settings' || selectedMenuId === 'health-insurance-settings' || selectedMenuId === 'employee-settings'" class="settings-page-container">
+        <div class="page-message">
+          <p>{{ getSettingsSubMenuLabel() }}のページです。</p>
+        </div>
+      </div>
+      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>
