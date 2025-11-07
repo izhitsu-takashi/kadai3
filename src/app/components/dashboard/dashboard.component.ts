@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EmployeeService, Employee } from '../../services/employee.service';
 import { ImportComponent } from '../import/import.component';
@@ -10,7 +11,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ImportComponent],
+  imports: [CommonModule, FormsModule, ImportComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -35,6 +36,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isSettingsExpanded: boolean = false;
   isLoggingOut: boolean = false;
+
+  // 企業情報設定用
+  companyInfo = {
+    companyName: '',
+    address: '',
+    corporateNumber: '',
+    officeNumber: ''
+  };
+  isCompanyInfoSaved: boolean = false;
+  isCompanyInfoEditing: boolean = true;
 
   employees: Employee[] = [];
   sortedEmployees: Employee[] = [];
@@ -571,5 +582,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => {
       this.router.navigateByUrl('/login');
     }, 500);
+  }
+
+  onCompanyInfoSubmit(): void {
+    // フォーム送信処理
+    console.log('企業情報を保存:', this.companyInfo);
+    // ここでFirestoreに保存する処理を追加できます
+    
+    // 保存完了の状態に変更
+    this.isCompanyInfoSaved = true;
+    this.isCompanyInfoEditing = false;
+    
+    // アラートで保存完了を通知
+    alert('保存しました');
+  }
+
+  onEditCompanyInfo(): void {
+    // 編集モードに切り替え
+    this.isCompanyInfoEditing = true;
+    this.isCompanyInfoSaved = false;
   }
 }
