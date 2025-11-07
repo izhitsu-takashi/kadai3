@@ -31,19 +31,21 @@
           <table *ngIf="employees && employees.length > 0" class="employee-table">
             <thead>
               <tr>
-                <th>社員ID</th>
-                <th>氏名</th>
-                <th>標準報酬月額</th>
-                <th>等級</th>
-                <th>健康保険料</th>
-                <th>厚生年金料</th>
-                <th>介護保険料</th>
-                <th>本人負担額</th>
-                <th>会社負担額</th>
+                <th *ngFor="let column of columns" 
+                    [class.sortable-header]="column.sortable"
+                    [class.non-sortable-header]="!column.sortable"
+                    (click)="column.sortable && sortTable(column.key)">
+                  <div class="header-content">
+                    <span>{{ column.label }}</span>
+                    <span *ngIf="column.sortable" class="sort-icon" [class.active]="sortColumn === column.key">
+                      {{ getSortIcon(column.key) }}
+                    </span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let employee of employees">
+              <tr *ngFor="let employee of sortedEmployees">
                 <td>{{ getEmployeeId(employee) }}</td>
                 <td>{{ getEmployeeName(employee) }}</td>
                 <td>{{ getStandardSalary(employee) | number }}</td>
