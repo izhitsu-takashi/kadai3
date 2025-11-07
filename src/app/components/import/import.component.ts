@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FirestoreService } from '../../services/firestore.service';
 import { EmployeeService } from '../../services/employee.service';
 
-import employeeData from '../../../../社員情報テストデータ_firestore用.json';
+import employeeDataAll from '../../../../社員テストデータ_all.json';
 @Component({
   selector: 'app-import',
   standalone: true,
@@ -65,21 +65,37 @@ export class ImportComponent {
         return;
       }
 
-      const employees = employeeData as any[];
+      const monthlyData = employeeDataAll as { [key: string]: any[] };
       let successCount = 0;
       let errorCount = 0;
+      let totalCount = 0;
 
-      for (const employee of employees) {
-        try {
-          await this.employeeService.addEmployee(employee);
-          successCount++;
-        } catch (error) {
-          console.error('Error importing employee:', error);
-          errorCount++;
+      // 各月のデータを処理
+      for (const [month, employees] of Object.entries(monthlyData)) {
+        for (const employee of employees) {
+          try {
+            // 月情報を追加
+            const employeeWithMonth = {
+              ...employee,
+              月: month
+            };
+            await this.employeeService.addEmployee(employeeWithMonth);
+            successCount++;
+            totalCount++;
+            
+            // 進捗を更新（100件ごと）
+            if (totalCount % 100 === 0) {
+              this.importResult = `インポート中... ${totalCount}件処理済み`;
+            }
+          } catch (error) {
+            console.error('Error importing employee:', error);
+            errorCount++;
+            totalCount++;
+          }
         }
       }
 
-      this.importResult = `インポート完了: ${successCount}件成功, ${errorCount}件失敗`;
+      this.importResult = `インポート完了: ${successCount}件成功, ${errorCount}件失敗 (合計: ${totalCount}件)`;
     } catch (error) {
       console.error('Import error:', error);
       this.importResult = `エラーが発生しました: ${error}`;

@@ -188,6 +188,50 @@
   overflow-y: auto;
 }
 
+.insurance-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.month-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.month-select-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.month-select {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #2d3748;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 200px;
+}
+
+.month-select:hover {
+  border-color: #667eea;
+}
+
+.month-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .table-container {
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

@@ -34,6 +34,10 @@ export class DashboardComponent implements OnInit {
   sortColumn: string | null = null;
   sortDirection: 'asc' | 'desc' = 'asc';
 
+  // 月選択用
+  availableMonths: string[] = [];
+  selectedMonth: string = '';
+
   columns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
@@ -49,12 +53,45 @@ export class DashboardComponent implements OnInit {
   constructor(private employeeService: EmployeeService) {}
 
   ngOnInit(): void {
+    // まずすべてのデータを読み込んで利用可能な月のリストを取得
+    this.loadAvailableMonths();
+    // その後、選択された月のデータを読み込む
     this.loadEmployees();
+  }
+
+  loadAvailableMonths(): void {
+    // すべてのデータを読み込んで利用可能な月のリストを取得
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        const monthsSet = new Set<string>();
+        data.forEach(emp => {
+          const month = emp.月 || emp.month;
+          if (month) {
+            monthsSet.add(month);
+          }
+        });
+        this.availableMonths = Array.from(monthsSet).sort();
+        
+        // デフォルトで最初の月を選択（必ず月を選択する）
+        if (this.availableMonths.length > 0 && !this.selectedMonth) {
+          this.selectedMonth = this.availableMonths[0];
+          // 選択された月のデータを読み込む
+          this.loadEmployees();
+        }
+      },
+      error: (error) => {
+        console.error('Error loading available months:', error);
+      }
+    });
   }
 
   loadEmployees(): void {
     this.isLoading = true;
-    this.employeeService.getEmployees().subscribe({
+    // 必ず月を選択する必要がある
+    if (!this.selectedMonth && this.availableMonths.length > 0) {
+      this.selectedMonth = this.availableMonths[0];
+    }
+    this.employeeService.getEmployees(this.selectedMonth).subscribe({
       next: (data) => {
         this.employees = data;
         this.sortedEmployees = [...data];
@@ -65,6 +102,11 @@ export class DashboardComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  onMonthChange(month: string): void {
+    this.selectedMonth = month;
+    this.loadEmployees();
   }
 
   sortTable(columnKey: string): void {

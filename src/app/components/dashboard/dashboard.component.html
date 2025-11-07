@@ -35,11 +35,24 @@
       </nav>
     </aside>
     <main class="dashboard-content">
-      <div *ngIf="selectedMenuId === 'insurance-list'" class="table-container">
-        <div *ngIf="isLoading" class="loading-message">
-          <p>データを読み込み中...</p>
+      <div *ngIf="selectedMenuId === 'insurance-list'" class="insurance-list-container">
+        <div class="month-selector-container">
+          <label for="month-select" class="month-select-label">表示月:</label>
+          <select 
+            id="month-select" 
+            class="month-select"
+            [value]="selectedMonth"
+            (change)="onMonthChange($any($event.target).value)">
+            <option *ngFor="let month of availableMonths" [value]="month">
+              {{ month }}
+            </option>
+          </select>
         </div>
-        <ng-container *ngIf="!isLoading">
+        <div class="table-container">
+          <div *ngIf="isLoading" class="loading-message">
+            <p>データを読み込み中...</p>
+          </div>
+          <ng-container *ngIf="!isLoading">
           <table *ngIf="employees && employees.length > 0" class="employee-table">
             <thead>
               <tr>
@@ -70,7 +83,8 @@
           <!-- <div *ngIf="!employees || employees.length === 0" class="no-data-message">
             <p>データがありません</p>
           </div> -->
-        </ng-container>
+          </ng-container>
+        </div>
       </div>
       <div *ngIf="selectedMenuId === 'company-settings' || selectedMenuId === 'health-insurance-settings' || selectedMenuId === 'employee-settings'" class="settings-page-container">
         <div class="page-message">

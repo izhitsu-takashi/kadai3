@@ -15,6 +15,7 @@ export interface Employee {
   介護保険料?: number;
   本人負担額?: number;
   会社負担額?: number;
+  月?: string; // 月情報（例: "2025年04月"）
   // 英語キーもサポート（後方互換性のため）
   name?: string;
   standardSalary?: number;
@@ -24,6 +25,7 @@ export interface Employee {
   nursingInsurance?: number;
   personalBurden?: number;
   companyBurden?: number;
+  month?: string;
 }
 
 @Injectable({
@@ -42,7 +44,7 @@ export class EmployeeService {
     return this.db;
   }
 
-  getEmployees(): Observable<Employee[]> {
+  getEmployees(month?: string): Observable<Employee[]> {
     const db = this.getDb();
     if (!db) {
       // SSR環境やFirestoreが初期化されていない場合は空の配列を返す
@@ -54,10 +56,17 @@ export class EmployeeService {
     const employeesRef = collection(db, this.collectionName);
     return from(getDocs(employeesRef)).pipe(
       map(querySnapshot => {
-        return querySnapshot.docs.map(doc => ({
+        let employees = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as Employee));
+        
+        // 月でフィルタリング
+        if (month) {
+          employees = employees.filter(emp => emp.月 === month || emp.month === month);
+        }
+        
+        return employees;
       })
     );
   }
