@@ -82,6 +82,12 @@
   padding: 0;
   border-right: 2px solid #e2e8f0;
   flex-shrink: 0;
+  position: sticky;
+  top: 95px;
+  align-self: flex-start;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  min-height: calc(100vh - 80px);
 }
 
 .sidebar-menu {
@@ -100,7 +106,7 @@
   color: #2d3748;
   background: white;
   border: none;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #aaacaf;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -143,13 +149,14 @@
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  overflow-x: auto;
+  width: 100%;
 }
 
 .employee-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
 
 .employee-table thead {
@@ -158,13 +165,17 @@
 }
 
 .employee-table th {
-  padding: 1rem;
-  text-align: left;
+  padding: 0;
+  text-align: center;
   font-weight: 600;
   color: #2d3748;
   white-space: nowrap;
   border-right: 1px solid #e2e8f0;
   position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  vertical-align: middle;
 }
 
 .employee-table th:last-child {
@@ -185,22 +196,24 @@
   cursor: default;
 }
 
-.header-content {
+/* ダッシュボードヘッダー内のheader-content */
+.dashboard-header .header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  width: 100%;
+}
+
+/* テーブルヘッダー内のheader-content */
+.table-header-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.sort-icon {
-  font-size: 0.9rem;
-  color: #a0aec0;
-  transition: color 0.2s ease;
-}
-
-.sort-icon.active {
-  color: #667eea;
-  font-weight: bold;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  margin: 15px 0px;
 }
 
 .employee-table tbody tr {
@@ -217,9 +230,13 @@
 }
 
 .employee-table td {
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   color: #4a5568;
   border-right: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
 }
 
 .employee-table td:last-child {
@@ -260,4 +277,176 @@
 .no-data-message p {
   font-size: 1rem;
   margin: 0;
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 1400px) {
+  .employee-table {
+    font-size: 0.8rem;
+  }
+
+  .employee-table th {
+    padding: 0;
+    font-size: 0.8rem;
+  }
+
+  .table-header-content {
+    padding: 0.6rem 0.4rem;
+  }
+
+  .employee-table td {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .employee-table {
+    font-size: 0.75rem;
+  }
+
+  .employee-table th {
+    padding: 0;
+    font-size: 0.75rem;
+  }
+
+  .table-header-content {
+    padding: 0.5rem 0.3rem;
+  }
+
+  .employee-table td {
+    padding: 0.5rem 0.3rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .employee-table {
+    font-size: 0.7rem;
+  }
+
+  .employee-table th {
+    padding: 0;
+    font-size: 0.7rem;
+  }
+
+  .table-header-content {
+    padding: 0.4rem 0.25rem;
+  }
+
+  .employee-table td {
+    padding: 0.4rem 0.25rem;
+    font-size: 0.7rem;
+  }
+
+  .sidebar {
+    width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-body {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid #e2e8f0;
+    position: sticky;
+    top: 80px;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .sidebar-menu {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .menu-item {
+    border-bottom: none;
+    border-right: 1px solid #e2e8f0;
+    white-space: nowrap;
+    min-width: fit-content;
+  }
+
+  .menu-item:last-child {
+    border-right: none;
+  }
+
+  .dashboard-content {
+    padding: 1rem 0.5rem;
+  }
+
+  .employee-table {
+    font-size: 0.65rem;
+  }
+
+  .employee-table th {
+    padding: 0;
+    font-size: 0.65rem;
+  }
+
+  .table-header-content {
+    padding: 0.35rem 0.2rem;
+  }
+
+  .employee-table td {
+    padding: 0.35rem 0.2rem;
+    font-size: 0.65rem;
+  }
+
+  .app-name {
+    font-size: 1.5rem;
+    margin-left: 10px;
+  }
+
+  .dashboard-header .header-content {
+    padding: 0.75rem 1rem;
+  }
+
+  .notification-button,
+  .logout-button {
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .employee-table {
+    font-size: 0.6rem;
+  }
+
+  .employee-table th {
+    padding: 0;
+    font-size: 0.6rem;
+  }
+
+  .table-header-content {
+    padding: 0.3rem 0.15rem;
+  }
+
+  .employee-table td {
+    padding: 0.3rem 0.15rem;
+    font-size: 0.6rem;
+  }
+
+  .app-name {
+    font-size: 1.2rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .notification-button,
+  .logout-button {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+  }
 }
