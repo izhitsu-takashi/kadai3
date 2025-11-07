@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EmployeeService, Employee } from '../../services/employee.service';
+import { ImportComponent } from '../import/import.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ImportComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })

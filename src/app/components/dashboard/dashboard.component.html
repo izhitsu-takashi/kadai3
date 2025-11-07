@@ -86,10 +86,13 @@
           </ng-container>
         </div>
       </div>
-      <div *ngIf="selectedMenuId === 'company-settings' || selectedMenuId === 'health-insurance-settings' || selectedMenuId === 'employee-settings'" class="settings-page-container">
+      <div *ngIf="selectedMenuId === 'company-settings' || selectedMenuId === 'health-insurance-settings'" class="settings-page-container">
         <div class="page-message">
           <p>{{ getSettingsSubMenuLabel() }}のページです。</p>
         </div>
+      </div>
+      <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">
+        <app-import></app-import>
       </div>
       <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>

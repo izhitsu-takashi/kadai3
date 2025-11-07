@@ -22,6 +22,14 @@ import employeeDataAll from '../../../../社員テストデータ_all.json';
   styles: [`
     .import-container {
       padding: 2rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .import-container h2 {
+      margin: 0 0 1.5rem 0;
+      font-size: 1.5rem;
+      color: #2d3748;
     }
     button {
       padding: 1rem 2rem;
@@ -31,6 +39,10 @@ import employeeDataAll from '../../../../社員テストデータ_all.json';
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #5568d3;
     }
     button:disabled {
       background: #ccc;
@@ -39,8 +51,10 @@ import employeeDataAll from '../../../../社員テストデータ_all.json';
     .result {
       margin-top: 1rem;
       padding: 1rem;
-      background: #f0f0f0;
+      background: #f7fafc;
       border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      color: #2d3748;
     }
   `]
 })
