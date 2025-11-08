@@ -6,7 +6,7 @@ import { EmployeeService, Employee } from '../../services/employee.service';
 import { FirestoreService } from '../../services/firestore.service';
 import { ImportComponent } from '../import/import.component';
 import { Chart, registerables } from 'chart.js';
-import { Firestore, collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { Firestore, collection, doc, setDoc, getDoc, getDocs } from 'firebase/firestore';
 
 Chart.register(...registerables);
 
@@ -57,6 +57,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   insuranceRateError: string = '';
   isHealthInsuranceSaved: boolean = false;
   isHealthInsuranceEditing: boolean = true;
+  
+  // 協会けんぽの都道府県別保険料率
+  kenpoRates: { [key: string]: { healthRate: number; careRate: number } } = {};
 
   prefectures = [
     '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
@@ -124,6 +127,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 保存された設定情報を読み込む
     this.loadCompanyInfo();
     this.loadHealthInsuranceSettings();
+    // 協会けんぽの都道府県別保険料率を読み込む
+    this.loadKenpoRates();
   }
 
   ngAfterViewInit(): void {
@@ -348,13 +353,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getHealthInsurance(employee: Employee): number {
+    const standardSalary = this.getStandardSalary(employee);
+    
     // 組合保険が選択されている場合、設定された保険料率を使用して計算
     if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
-      const standardSalary = this.getStandardSalary(employee);
       // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
       return Math.round(standardSalary * (this.insuranceRate / 100));
     }
-    // 協会けんぽの場合、または組合保険の設定がない場合は既存のデータを使用
+    
+    // 協会けんぽが選択されている場合、都道府県に基づいた保険料率を使用して計算
+    if (this.healthInsuranceType === 'kyokai' && this.prefecture) {
+      const kenpoRate = this.kenpoRates[this.prefecture];
+      if (kenpoRate && kenpoRate.healthRate > 0) {
+        // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
+        return Math.round(standardSalary * (kenpoRate.healthRate / 100));
+      }
+    }
+    
+    // 設定がない場合は既存のデータを使用
     return employee.健康保険料 ?? employee.healthInsurance ?? 0;
   }
 
@@ -693,6 +709,31 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  async loadKenpoRates(): Promise<void> {
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      const kenpoRatesRef = collection(db, 'kenpoRates');
+      const querySnapshot = await getDocs(kenpoRatesRef);
+      
+      this.kenpoRates = {};
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data['prefecture'] && data['healthRate'] !== undefined) {
+          this.kenpoRates[data['prefecture']] = {
+            healthRate: data['healthRate'],
+            careRate: data['careRate'] || 1.59
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Error loading kenpo rates:', error);
+    }
+  }
+
   async loadHealthInsuranceSettings(): Promise<void> {
     const db = this.firestoreService.getFirestore();
     if (!db) {
@@ -718,8 +759,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         
         // 健康保険設定が読み込まれた後、データを再計算する
-        // 組合保険の場合、保険料率が変更されている可能性があるため
-        if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
+        // 組合保険または協会けんぽの場合、保険料率が変更されている可能性があるため
+        if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
+            (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
           // テーブルデータを再読み込み（表示を更新）
           this.loadEmployees();
           // レポートデータも再計算
@@ -772,8 +814,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.isHealthInsuranceSaved = true;
       this.isHealthInsuranceEditing = false;
       
-      // 組合保険の場合、保険料率が変更されたのでデータを再計算
-      if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
+      // 組合保険または協会けんぽの場合、保険料率が変更されたのでデータを再計算
+      if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
+          (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
         // テーブルデータを再読み込み（表示を更新）
         this.loadEmployees();
         // レポートデータも再計算

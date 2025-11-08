@@ -270,7 +270,8 @@
               </div>
               <div class="rate-card-content">
                 <p *ngIf="healthInsuranceType === 'kumiai' && insuranceRate > 0" class="rate-value">{{ insuranceRate }}%</p>
-                <p *ngIf="healthInsuranceType === 'kyokai' && prefecture" class="rate-value-note">{{ prefecture }}</p>
+                <p *ngIf="healthInsuranceType === 'kyokai' && prefecture && kenpoRates[prefecture]" class="rate-value">{{ kenpoRates[prefecture].healthRate }}%</p>
+                <p *ngIf="healthInsuranceType === 'kyokai' && prefecture && !kenpoRates[prefecture]" class="rate-value-note">{{ prefecture }}</p>
                 <p *ngIf="healthInsuranceType === 'kyokai' && !prefecture" class="rate-value-note">未設定</p>
                 <p *ngIf="healthInsuranceType === 'kumiai' && insuranceRate === 0" class="rate-value-note">未設定</p>
               </div>
