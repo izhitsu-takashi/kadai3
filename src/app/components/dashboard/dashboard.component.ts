@@ -348,6 +348,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getHealthInsurance(employee: Employee): number {
+    // 組合保険が選択されている場合、設定された保険料率を使用して計算
+    if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
+      const standardSalary = this.getStandardSalary(employee);
+      // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
+      return Math.round(standardSalary * (this.insuranceRate / 100));
+    }
+    // 協会けんぽの場合、または組合保険の設定がない場合は既存のデータを使用
     return employee.健康保険料 ?? employee.healthInsurance ?? 0;
   }
 
@@ -709,6 +716,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.isHealthInsuranceSaved = true;
           this.isHealthInsuranceEditing = false;
         }
+        
+        // 健康保険設定が読み込まれた後、データを再計算する
+        // 組合保険の場合、保険料率が変更されている可能性があるため
+        if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
+          // テーブルデータを再読み込み（表示を更新）
+          this.loadEmployees();
+          // レポートデータも再計算
+          this.loadReportData();
+        }
       }
     } catch (error) {
       console.error('Error loading health insurance settings:', error);
@@ -755,6 +771,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 保存完了の状態に変更
       this.isHealthInsuranceSaved = true;
       this.isHealthInsuranceEditing = false;
+      
+      // 組合保険の場合、保険料率が変更されたのでデータを再計算
+      if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
+        // テーブルデータを再読み込み（表示を更新）
+        this.loadEmployees();
+        // レポートデータも再計算
+        this.loadReportData();
+      }
       
       // アラートで保存完了を通知
       alert('保存しました');

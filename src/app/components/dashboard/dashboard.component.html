@@ -245,8 +245,37 @@
         </div>
       </div>
       <div *ngIf="selectedMenuId === 'insurance-rate-inquiry'" class="settings-page-container">
-        <div class="page-message">
-          <p>{{ getSettingsSubMenuLabel() }}のページです。</p>
+        <div class="insurance-rate-inquiry-container">
+          <h2 class="inquiry-title">保険料率照会</h2>
+          <div class="rate-cards">
+            <div class="rate-card">
+              <div class="rate-card-header">
+                <h3 class="rate-card-title">厚生年金保険料</h3>
+              </div>
+              <div class="rate-card-content">
+                <p class="rate-value">18.3%</p>
+              </div>
+            </div>
+            <div class="rate-card">
+              <div class="rate-card-header">
+                <h3 class="rate-card-title">介護保険料</h3>
+              </div>
+              <div class="rate-card-content">
+                <p class="rate-value">1.59%</p>
+              </div>
+            </div>
+            <div class="rate-card">
+              <div class="rate-card-header">
+                <h3 class="rate-card-title">健康保険料</h3>
+              </div>
+              <div class="rate-card-content">
+                <p *ngIf="healthInsuranceType === 'kumiai' && insuranceRate > 0" class="rate-value">{{ insuranceRate }}%</p>
+                <p *ngIf="healthInsuranceType === 'kyokai' && prefecture" class="rate-value-note">{{ prefecture }}</p>
+                <p *ngIf="healthInsuranceType === 'kyokai' && !prefecture" class="rate-value-note">未設定</p>
+                <p *ngIf="healthInsuranceType === 'kumiai' && insuranceRate === 0" class="rate-value-note">未設定</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">

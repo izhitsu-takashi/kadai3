@@ -540,6 +540,78 @@
   font-weight: 500;
 }
 
+/* 保険料率照会ページ */
+.insurance-rate-inquiry-container {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.inquiry-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 2rem 0;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.rate-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.rate-card {
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.rate-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.rate-card-header {
+  margin-bottom: 1rem;
+}
+
+.rate-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.rate-card-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}
+
+.rate-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #667eea;
+  margin: 0;
+  text-align: center;
+}
+
+.rate-value-note {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #4a5568;
+  margin: 0;
+  text-align: center;
+  line-height: 1.6;
+}
+
 .settings-menu {
   display: flex;
   flex-direction: column;
@@ -902,5 +974,17 @@
   .logout-button {
     padding: 0.35rem 0.75rem;
     font-size: 0.8rem;
+  }
+
+  .rate-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .rate-value {
+    font-size: 2rem;
+  }
+
+  .inquiry-title {
+    font-size: 1.5rem;
   }
 }
