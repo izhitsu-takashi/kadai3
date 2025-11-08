@@ -73,7 +73,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let employee of sortedEmployees">
+              <tr *ngFor="let employee of sortedEmployees" (click)="openEmployeeModal(employee)" class="employee-row">
                 <td>{{ getEmployeeId(employee) }}</td>
                 <td>{{ getEmployeeName(employee) }}</td>
                 <td>{{ getStandardSalary(employee) | number }}</td>
@@ -359,5 +359,87 @@
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>
+  </div>
+</div>
+
+<!-- 社員情報モーダル -->
+<div *ngIf="isModalOpen" class="modal-overlay" (click)="closeEmployeeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">社員情報</h2>
+      <button class="modal-close-button" (click)="closeEmployeeModal()">×</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedEmployee">
+      <div class="employee-info-container">
+        <div class="info-row">
+          <span class="info-label">ID</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, 'ID') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">氏名</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '氏名') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">役職</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '役職') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">部署</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '部署') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">生年月日</span>
+          <span class="info-value">{{ formatDate(getEmployeeField(selectedEmployee, '生年月日')) }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">雇用形態</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '雇用形態') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">勤務地</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '勤務地') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">年齢</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '年齢') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">性別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '性別') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">入社日</span>
+          <span class="info-value">{{ formatDate(getEmployeeField(selectedEmployee, '入社日')) }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">標準報酬月額</span>
+          <span class="info-value">{{ getStandardSalary(selectedEmployee) | number }}円</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">等級</span>
+          <span class="info-value">{{ getGrade(selectedEmployee) }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">健康保険料</span>
+          <span class="info-value">{{ getHealthInsurance(selectedEmployee) | number }}円</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">厚生年金保険料</span>
+          <span class="info-value">{{ getWelfarePension(selectedEmployee) | number }}円</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">介護保険料</span>
+          <span class="info-value">{{ getNursingInsurance(selectedEmployee) | number }}円</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">本人負担額</span>
+          <span class="info-value">{{ getPersonalBurden(selectedEmployee) | number }}円</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">会社負担額</span>
+          <span class="info-value">{{ getCompanyBurden(selectedEmployee) | number }}円</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

@@ -39,6 +39,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isSettingsExpanded: boolean = false;
   isLoggingOut: boolean = false;
 
+  // モーダル用
+  isModalOpen: boolean = false;
+  selectedEmployee: Employee | null = null;
+
   // 企業情報設定用
   companyInfo = {
     companyName: '',
@@ -420,6 +424,61 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const total = healthInsurance + welfarePension + nursingInsurance;
     // 折半して小数点以下を切り捨て
     return Math.floor(total / 2);
+  }
+
+  // モーダル関連のメソッド
+  openEmployeeModal(employee: Employee): void {
+    this.selectedEmployee = employee;
+    this.isModalOpen = true;
+  }
+
+  closeEmployeeModal(): void {
+    this.isModalOpen = false;
+    this.selectedEmployee = null;
+  }
+
+  getEmployeeField(employee: Employee, field: string): any {
+    // 日本語キーと英語キーの両方をチェック
+    return (employee as any)[field] ?? (employee as any)[this.getEnglishKey(field)] ?? '-';
+  }
+
+  getEnglishKey(japaneseKey: string): string {
+    const keyMap: { [key: string]: string } = {
+      'ID': 'ID',
+      '氏名': 'name',
+      '役職': 'position',
+      '部署': 'department',
+      '生年月日': 'birthDate',
+      '雇用形態': 'employmentType',
+      '勤務地': 'workLocation',
+      '年齢': 'age',
+      '性別': 'gender',
+      '入社日': 'joinDate',
+      '標準報酬月額': 'standardSalary',
+      '等級': 'grade',
+      '健康保険料': 'healthInsurance',
+      '厚生年金保険料': 'welfarePension',
+      '介護保険料': 'nursingInsurance',
+      '本人負担額': 'personalBurden',
+      '会社負担額': 'companyBurden',
+      '月': 'month'
+    };
+    return keyMap[japaneseKey] || japaneseKey;
+  }
+
+  formatDate(dateString: string | undefined): string {
+    if (!dateString) {
+      return '-';
+    }
+    // yyyy-mm-dd形式の文字列を yyyy年mm月dd日 に変換
+    const dateParts = dateString.split('-');
+    if (dateParts.length === 3) {
+      const year = dateParts[0];
+      const month = parseInt(dateParts[1], 10).toString();
+      const day = parseInt(dateParts[2], 10).toString();
+      return `${year}年${month}月${day}日`;
+    }
+    return dateString;
   }
 
   // レポート関連のメソッド
