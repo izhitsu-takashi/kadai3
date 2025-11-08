@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FirestoreService } from '../../services/firestore.service';
 import { EmployeeService } from '../../services/employee.service';
 
-import employeeDataAll from '../../../../社員テストデータ_all.json';
+import employeeData from '../../../../社員テストデータ.json';
 @Component({
   selector: 'app-import',
   standalone: true,
@@ -79,7 +79,7 @@ export class ImportComponent {
         return;
       }
 
-      const monthlyData = employeeDataAll as { [key: string]: any[] };
+      const monthlyData = employeeData as { [key: string]: any[] };
       let successCount = 0;
       let errorCount = 0;
       let totalCount = 0;

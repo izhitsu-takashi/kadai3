@@ -60,6 +60,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   
   // 協会けんぽの都道府県別保険料率
   kenpoRates: { [key: string]: { healthRate: number; careRate: number } } = {};
+  
+  // 保険料率設定（厚生年金、介護保険）
+  welfarePensionRate: number = 18.3; // デフォルト値
+  nursingInsuranceRate: number = 1.59; // デフォルト値
 
   prefectures = [
     '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
@@ -129,6 +133,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadHealthInsuranceSettings();
     // 協会けんぽの都道府県別保険料率を読み込む
     this.loadKenpoRates();
+    // 保険料率設定を読み込む
+    this.loadInsuranceRateSettings();
   }
 
   ngAfterViewInit(): void {
@@ -375,19 +381,45 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getWelfarePension(employee: Employee): number {
+    // 保険料率設定が読み込まれている場合、標準報酬月額から計算
+    if (this.welfarePensionRate > 0) {
+      const standardSalary = this.getStandardSalary(employee);
+      // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
+      return Math.round(standardSalary * (this.welfarePensionRate / 100));
+    }
+    // 設定がない場合は既存のデータを使用
     return employee.厚生年金保険料 ?? employee.welfarePension ?? 0;
   }
 
   getNursingInsurance(employee: Employee): number {
+    // 保険料率設定が読み込まれている場合、標準報酬月額から計算
+    if (this.nursingInsuranceRate > 0) {
+      const standardSalary = this.getStandardSalary(employee);
+      // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
+      return Math.round(standardSalary * (this.nursingInsuranceRate / 100));
+    }
+    // 設定がない場合は既存のデータを使用
     return employee.介護保険料 ?? employee.nursingInsurance ?? 0;
   }
 
   getPersonalBurden(employee: Employee): number {
-    return employee.本人負担額 ?? employee.personalBurden ?? 0;
+    // 健康保険料、厚生年金保険料、介護保険料の合計を折半（切り捨て）
+    const healthInsurance = this.getHealthInsurance(employee);
+    const welfarePension = this.getWelfarePension(employee);
+    const nursingInsurance = this.getNursingInsurance(employee);
+    const total = healthInsurance + welfarePension + nursingInsurance;
+    // 折半して小数点以下を切り捨て
+    return Math.floor(total / 2);
   }
 
   getCompanyBurden(employee: Employee): number {
-    return employee.会社負担額 ?? employee.companyBurden ?? 0;
+    // 健康保険料、厚生年金保険料、介護保険料の合計を折半（切り捨て）
+    const healthInsurance = this.getHealthInsurance(employee);
+    const welfarePension = this.getWelfarePension(employee);
+    const nursingInsurance = this.getNursingInsurance(employee);
+    const total = healthInsurance + welfarePension + nursingInsurance;
+    // 折半して小数点以下を切り捨て
+    return Math.floor(total / 2);
   }
 
   // レポート関連のメソッド
@@ -731,6 +763,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     } catch (error) {
       console.error('Error loading kenpo rates:', error);
+    }
+  }
+
+  async loadInsuranceRateSettings(): Promise<void> {
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'insuranceRateSettings', 'settings');
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        this.welfarePensionRate = data['welfarePensionRate'] || 18.3;
+        this.nursingInsuranceRate = data['nursingInsuranceRate'] || 1.59;
+        
+        // 保険料率設定が読み込まれた後、データを再計算する
+        this.loadEmployees();
+        this.loadReportData();
+      }
+    } catch (error) {
+      console.error('Error loading insurance rate settings:', error);
     }
   }
 
