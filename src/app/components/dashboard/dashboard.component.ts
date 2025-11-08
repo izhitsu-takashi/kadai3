@@ -385,7 +385,19 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getWelfarePension(employee: Employee): number {
-    // 保険料率設定が読み込まれている場合、標準報酬月額から計算
+    const grade = this.getGrade(employee);
+    
+    // 等級1~4の場合は16104円
+    if (grade >= 1 && grade <= 4) {
+      return 16104;
+    }
+    
+    // 等級35以上の場合は118950円
+    if (grade >= 35) {
+      return 118950;
+    }
+    
+    // その他の場合は保険料率設定から計算
     if (this.welfarePensionRate > 0) {
       const standardSalary = this.getStandardSalary(employee);
       // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
@@ -396,7 +408,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getNursingInsurance(employee: Employee): number {
-    // 保険料率設定が読み込まれている場合、標準報酬月額から計算
+    // 年齢を取得（型アサーションを使用）
+    const age = (employee as any).年齢 ?? (employee as any).age;
+    
+    // 40歳未満の場合は介護保険料は0
+    if (age === undefined || age === null || age < 40) {
+      return 0;
+    }
+    
+    // 40歳以上の場合は保険料率設定から計算
     if (this.nursingInsuranceRate > 0) {
       const standardSalary = this.getStandardSalary(employee);
       // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける

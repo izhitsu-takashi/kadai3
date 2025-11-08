@@ -150,55 +150,55 @@
     },
     {
       "grade": 38,
-      "monthlyStandard": 740000
+      "monthlyStandard": 750000
     },
     {
       "grade": 39,
-      "monthlyStandard": 770000
+      "monthlyStandard": 790000
     },
     {
       "grade": 40,
-      "monthlyStandard": 800000
-    },
-    {
-      "grade": 41,
       "monthlyStandard": 830000
     },
     {
+      "grade": 41,
+      "monthlyStandard": 880000
+    },
+    {
       "grade": 42,
-      "monthlyStandard": 860000
+      "monthlyStandard": 930000
     },
     {
       "grade": 43,
-      "monthlyStandard": 890000
-    },
-    {
-      "grade": 44,
-      "monthlyStandard": 920000
-    },
-    {
-      "grade": 45,
-      "monthlyStandard": 950000
-    },
-    {
-      "grade": 46,
       "monthlyStandard": 980000
     },
     {
+      "grade": 44,
+      "monthlyStandard": 1030000
+    },
+    {
+      "grade": 45,
+      "monthlyStandard": 1090000
+    },
+    {
+      "grade": 46,
+      "monthlyStandard": 1150000
+    },
+    {
       "grade": 47,
-      "monthlyStandard": 1010000
+      "monthlyStandard": 1210000
     },
     {
       "grade": 48,
-      "monthlyStandard": 1040000
+      "monthlyStandard": 1270000
     },
     {
       "grade": 49,
-      "monthlyStandard": 1070000
+      "monthlyStandard": 1330000
     },
     {
       "grade": 50,
-      "monthlyStandard": 1100000
+      "monthlyStandard": 1390000
     }
   ]
 }

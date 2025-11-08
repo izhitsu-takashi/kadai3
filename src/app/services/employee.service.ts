@@ -16,6 +16,7 @@ export interface Employee {
   本人負担額?: number;
   会社負担額?: number;
   月?: string; // 月情報（例: "2025年04月"）
+  年齢?: number;
   // 英語キーもサポート（後方互換性のため）
   name?: string;
   standardSalary?: number;
@@ -26,6 +27,7 @@ export interface Employee {
   personalBurden?: number;
   companyBurden?: number;
   month?: string;
+  age?: number;
 }
 
 @Injectable({
