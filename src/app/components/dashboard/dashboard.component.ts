@@ -103,6 +103,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   availableDepartments: string[] = [];
   availableEmploymentTypes: string[] = [];
 
+  // 書類作成用
+  documentTypes = [
+    { id: 'document1', label: '書類1' },
+    { id: 'document2', label: '書類2' },
+    { id: 'document3', label: '書類3' },
+    { id: 'document4', label: '書類4' },
+    { id: 'document5', label: '書類5' }
+  ];
+  selectedDocumentType: string = 'document1';
+  documentCreationMode: 'bulk' | 'individual' = 'bulk';
+  
+  // 一括作成用フィルター
+  bulkFilterType: 'all' | 'department' | 'nursing' | 'custom' = 'all';
+  bulkFilterDepartment: string = '';
+  bulkFilterNursingInsurance: 'all' | 'with' | 'without' = 'all';
+  bulkSelectedEmployees: Employee[] = [];
+  bulkAvailableEmployees: Employee[] = [];
+  bulkSearchTerm: string = '';
+  
+  // 個別作成用
+  individualSearchTerm: string = '';
+  individualSearchResults: Employee[] = [];
+  individualSelectedEmployee: Employee | null = null;
+
   // レポート用
   reportEmployees: Employee[] = [];
   reportFilterType: 'month' | 'year' = 'month';
@@ -169,6 +193,26 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadKenpoRates();
     // 保険料率設定を読み込む
     this.loadInsuranceRateSettings();
+    // 書類作成用の部署リストを読み込む
+    this.loadDepartmentsForDocuments();
+  }
+
+  loadDepartmentsForDocuments(): void {
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        const departmentsSet = new Set<string>();
+        data.forEach(emp => {
+          const dept = (emp as any).部署 ?? (emp as any).department;
+          if (dept) {
+            departmentsSet.add(dept);
+          }
+        });
+        this.availableDepartments = Array.from(departmentsSet).sort();
+      },
+      error: (error) => {
+        console.error('Error loading departments:', error);
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -1326,5 +1370,132 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 編集モードに切り替え
     this.isHealthInsuranceEditing = true;
     this.isHealthInsuranceSaved = false;
+  }
+
+  // 書類作成関連のメソッド
+  onBulkSearch(): void {
+    if (!this.bulkSearchTerm || this.bulkSearchTerm.trim() === '') {
+      this.bulkAvailableEmployees = [];
+      return;
+    }
+    
+    const searchTerm = this.bulkSearchTerm.toLowerCase().trim();
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        // まず検索条件でフィルター
+        const filtered = data.filter(emp => {
+          const id = String(this.getEmployeeId(emp)).toLowerCase();
+          const name = this.getEmployeeName(emp).toLowerCase();
+          return id.includes(searchTerm) || name.includes(searchTerm);
+        });
+        
+        // 社員IDで重複を除去（最新のデータを優先）
+        const uniqueEmployeesMap = new Map<string | number, Employee>();
+        filtered.forEach(emp => {
+          const empId = this.getEmployeeId(emp);
+          if (!uniqueEmployeesMap.has(empId)) {
+            uniqueEmployeesMap.set(empId, emp);
+          }
+        });
+        
+        // 既に選択されている社員を除外し、IDでソート
+        this.bulkAvailableEmployees = Array.from(uniqueEmployeesMap.values())
+          .filter(emp => {
+            const empId = this.getEmployeeId(emp);
+            return !this.bulkSelectedEmployees.some(selected => 
+              this.getEmployeeId(selected) === empId
+            );
+          })
+          .sort((a, b) => {
+            const idA = this.getEmployeeId(a);
+            const idB = this.getEmployeeId(b);
+            // 数値として比較できる場合は数値で比較、そうでなければ文字列で比較
+            if (typeof idA === 'number' && typeof idB === 'number') {
+              return idA - idB;
+            }
+            return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
+          });
+      },
+      error: (error) => {
+        console.error('Error searching employees:', error);
+        this.bulkAvailableEmployees = [];
+      }
+    });
+  }
+
+  addBulkEmployee(employee: Employee): void {
+    // 既に選択されているかチェック（社員IDで比較）
+    const empId = this.getEmployeeId(employee);
+    const alreadySelected = this.bulkSelectedEmployees.some(emp => 
+      this.getEmployeeId(emp) === empId
+    );
+    
+    if (!alreadySelected) {
+      this.bulkSelectedEmployees.push(employee);
+      // 検索結果から削除（社員IDで比較）
+      this.bulkAvailableEmployees = this.bulkAvailableEmployees.filter(emp => 
+        this.getEmployeeId(emp) !== empId
+      );
+    }
+  }
+
+  removeBulkEmployee(employee: Employee): void {
+    const empId = this.getEmployeeId(employee);
+    this.bulkSelectedEmployees = this.bulkSelectedEmployees.filter(emp => 
+      this.getEmployeeId(emp) !== empId
+    );
+    // 検索結果を更新
+    if (this.bulkSearchTerm) {
+      this.onBulkSearch();
+    }
+  }
+
+  onIndividualSearch(): void {
+    if (!this.individualSearchTerm || this.individualSearchTerm.trim() === '') {
+      this.individualSearchResults = [];
+      this.individualSelectedEmployee = null;
+      return;
+    }
+    
+    const searchTerm = this.individualSearchTerm.toLowerCase().trim();
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        // まず検索条件でフィルター
+        const filtered = data.filter(emp => {
+          const id = String(this.getEmployeeId(emp)).toLowerCase();
+          const name = this.getEmployeeName(emp).toLowerCase();
+          return id.includes(searchTerm) || name.includes(searchTerm);
+        });
+        
+        // 社員IDで重複を除去（最新のデータを優先）
+        const uniqueEmployeesMap = new Map<string | number, Employee>();
+        filtered.forEach(emp => {
+          const empId = this.getEmployeeId(emp);
+          if (!uniqueEmployeesMap.has(empId)) {
+            uniqueEmployeesMap.set(empId, emp);
+          }
+        });
+        
+        // IDでソート
+        this.individualSearchResults = Array.from(uniqueEmployeesMap.values())
+          .sort((a, b) => {
+            const idA = this.getEmployeeId(a);
+            const idB = this.getEmployeeId(b);
+            // 数値として比較できる場合は数値で比較、そうでなければ文字列で比較
+            if (typeof idA === 'number' && typeof idB === 'number') {
+              return idA - idB;
+            }
+            return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
+          });
+      },
+      error: (error) => {
+        console.error('Error searching employees:', error);
+        this.individualSearchResults = [];
+      }
+    });
+  }
+
+  selectIndividualEmployee(employee: Employee): void {
+    this.individualSelectedEmployee = employee;
   }
 }

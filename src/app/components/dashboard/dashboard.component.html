@@ -443,7 +443,212 @@
           </div>
         </div>
       </div>
-      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'reports'" class="page-message">
+      <!-- 書類作成ページ -->
+      <div *ngIf="selectedMenuId === 'documents'" class="documents-container">
+        <div class="documents-header">
+          <h2 class="documents-title">書類作成</h2>
+        </div>
+        
+        <div class="documents-controls">
+          <!-- 書類選択 -->
+          <div class="control-group">
+            <label for="document-type-select" class="control-label">作成する書類:</label>
+            <select 
+              id="document-type-select" 
+              class="control-select"
+              [(ngModel)]="selectedDocumentType">
+              <option *ngFor="let docType of documentTypes" [value]="docType.id">
+                {{ docType.label }}
+              </option>
+            </select>
+          </div>
+          
+          <!-- 作成モード選択 -->
+          <div class="control-group">
+            <label class="control-label">作成モード:</label>
+            <div class="mode-selector">
+              <button 
+                type="button"
+                class="mode-button"
+                [class.active]="documentCreationMode === 'bulk'"
+                (click)="documentCreationMode = 'bulk'">
+                一括作成
+              </button>
+              <button 
+                type="button"
+                class="mode-button"
+                [class.active]="documentCreationMode === 'individual'"
+                (click)="documentCreationMode = 'individual'">
+                個別作成
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 一括作成フィルター -->
+        <div *ngIf="documentCreationMode === 'bulk'" class="bulk-creation-container">
+          <div class="filter-section">
+            <h3 class="section-title">フィルター設定</h3>
+            
+            <div class="filter-options">
+              <div class="filter-option">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="bulkFilterType" 
+                    value="all"
+                    [(ngModel)]="bulkFilterType">
+                  <span>社員全員</span>
+                </label>
+              </div>
+              <div class="filter-option">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="bulkFilterType" 
+                    value="department"
+                    [(ngModel)]="bulkFilterType">
+                  <span>部署ごと</span>
+                </label>
+                <select 
+                  *ngIf="bulkFilterType === 'department'"
+                  class="filter-select"
+                  [(ngModel)]="bulkFilterDepartment">
+                  <option value="">部署を選択</option>
+                  <option *ngFor="let dept of availableDepartments" [value]="dept">
+                    {{ dept }}
+                  </option>
+                </select>
+              </div>
+              <div class="filter-option">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="bulkFilterType" 
+                    value="nursing"
+                    [(ngModel)]="bulkFilterType">
+                  <span>介護保険</span>
+                </label>
+                <select 
+                  *ngIf="bulkFilterType === 'nursing'"
+                  class="filter-select"
+                  [(ngModel)]="bulkFilterNursingInsurance">
+                  <option value="all">すべて</option>
+                  <option value="with">有</option>
+                  <option value="without">無</option>
+                </select>
+              </div>
+              <div class="filter-option">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="bulkFilterType" 
+                    value="custom"
+                    [(ngModel)]="bulkFilterType">
+                  <span>社員を追加</span>
+                </label>
+              </div>
+            </div>
+            
+            <!-- カスタム選択（自分で社員を追加） -->
+            <div *ngIf="bulkFilterType === 'custom'" class="custom-selection-section">
+              <div class="search-box">
+                <input 
+                  type="text" 
+                  class="search-input"
+                  placeholder="IDまたは名前で検索"
+                  [(ngModel)]="bulkSearchTerm"
+                  (input)="onBulkSearch()">
+              </div>
+              
+              <div *ngIf="bulkSearchTerm && bulkAvailableEmployees.length > 0" class="search-results">
+                <div 
+                  *ngFor="let emp of bulkAvailableEmployees" 
+                  class="employee-item"
+                  (click)="addBulkEmployee(emp)">
+                  <span>{{ getEmployeeId(emp) }} - {{ getEmployeeName(emp) }}</span>
+                  <span class="add-button">+</span>
+                </div>
+              </div>
+              
+              <div *ngIf="bulkSelectedEmployees.length > 0" class="selected-employees">
+                <h4 class="section-subtitle">選択された社員 ({{ bulkSelectedEmployees.length }}名)</h4>
+                <div class="selected-employees-list">
+                  <div 
+                    *ngFor="let emp of bulkSelectedEmployees" 
+                    class="selected-employee-item">
+                    <span>{{ getEmployeeId(emp) }} - {{ getEmployeeName(emp) }}</span>
+                    <button 
+                      type="button"
+                      class="remove-button"
+                      (click)="removeBulkEmployee(emp)">
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- プレビューエリア（後で書類フォーマットを追加） -->
+          <div class="document-preview">
+            <h3 class="section-title">プレビュー</h3>
+            <div class="preview-placeholder">
+              <p>書類フォーマットは後で実装します</p>
+              <p *ngIf="bulkFilterType === 'all'">対象: 全社員</p>
+              <p *ngIf="bulkFilterType === 'department' && bulkFilterDepartment">
+                対象: {{ bulkFilterDepartment }}部署
+              </p>
+              <p *ngIf="bulkFilterType === 'nursing'">
+                対象: 介護保険{{ bulkFilterNursingInsurance === 'with' ? '有' : bulkFilterNursingInsurance === 'without' ? '無' : 'すべて' }}
+              </p>
+              <p *ngIf="bulkFilterType === 'custom'">
+                対象: {{ bulkSelectedEmployees.length }}名
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 個別作成 -->
+        <div *ngIf="documentCreationMode === 'individual'" class="individual-creation-container">
+          <div class="search-section">
+            <h3 class="section-title">社員検索</h3>
+            <div class="search-box">
+              <input 
+                type="text" 
+                class="search-input"
+                placeholder="IDまたは名前で検索"
+                [(ngModel)]="individualSearchTerm"
+                (input)="onIndividualSearch()">
+            </div>
+            
+            <div *ngIf="individualSearchTerm && individualSearchResults.length > 0" class="search-results">
+              <div 
+                *ngFor="let emp of individualSearchResults" 
+                class="employee-item"
+                [class.selected]="individualSelectedEmployee?.ID === emp.ID || individualSelectedEmployee?.id === emp.id"
+                (click)="selectIndividualEmployee(emp)">
+                <span>{{ getEmployeeId(emp) }} - {{ getEmployeeName(emp) }}</span>
+              </div>
+            </div>
+            
+            <div *ngIf="individualSearchTerm && individualSearchResults.length === 0" class="no-results">
+              <p>該当する社員が見つかりませんでした</p>
+            </div>
+          </div>
+          
+          <!-- プレビューエリア（後で書類フォーマットを追加） -->
+          <div *ngIf="individualSelectedEmployee" class="document-preview">
+            <h3 class="section-title">プレビュー</h3>
+            <div class="preview-placeholder">
+              <p>書類フォーマットは後で実装します</p>
+              <p>対象: {{ getEmployeeId(individualSelectedEmployee) }} - {{ getEmployeeName(individualSelectedEmployee) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'reports' && selectedMenuId !== 'documents'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>
