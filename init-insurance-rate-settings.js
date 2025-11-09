@@ -48,3 +48,4 @@ initInsuranceRateSettings()
     process.exit(1);
   });
 
+

@@ -90,6 +90,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   availableMonths: string[] = [];
   selectedMonth: string = '';
 
+  // フィルター用
+  filterDepartment: string = '';
+  filterEmploymentType: string = '';
+  filterNursingInsurance: string = ''; // 'all', 'with', 'without'
+  availableDepartments: string[] = [];
+  availableEmploymentTypes: string[] = [];
+
   // レポート用
   reportEmployees: Employee[] = [];
   reportFilterType: 'month' | 'year' = 'month';
@@ -195,7 +202,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.employeeService.getEmployees(this.selectedMonth).subscribe({
       next: (data) => {
         this.employees = data;
-        this.sortedEmployees = [...data];
+        this.updateFilterOptions(data);
+        this.applyFilters();
         this.isLoading = false;
       },
       error: (error) => {
@@ -205,8 +213,108 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  updateFilterOptions(employees: Employee[]): void {
+    // 部署のリストを取得
+    const departmentsSet = new Set<string>();
+    const employmentTypesSet = new Set<string>();
+    
+    employees.forEach(emp => {
+      const department = (emp as any).部署 ?? (emp as any).department;
+      const employmentType = (emp as any).雇用形態 ?? (emp as any).employmentType;
+      
+      if (department) {
+        departmentsSet.add(department);
+      }
+      if (employmentType) {
+        employmentTypesSet.add(employmentType);
+      }
+    });
+    
+    this.availableDepartments = Array.from(departmentsSet).sort();
+    this.availableEmploymentTypes = Array.from(employmentTypesSet).sort();
+  }
+
+  applyFilters(): void {
+    let filtered = [...this.employees];
+
+    // 部署でフィルター
+    if (this.filterDepartment) {
+      filtered = filtered.filter(emp => {
+        const department = (emp as any).部署 ?? (emp as any).department;
+        return department === this.filterDepartment;
+      });
+    }
+
+    // 雇用形態でフィルター
+    if (this.filterEmploymentType) {
+      filtered = filtered.filter(emp => {
+        const employmentType = (emp as any).雇用形態 ?? (emp as any).employmentType;
+        return employmentType === this.filterEmploymentType;
+      });
+    }
+
+    // 介護保険でフィルター
+    if (this.filterNursingInsurance === 'with') {
+      filtered = filtered.filter(emp => {
+        const nursingInsurance = this.getNursingInsurance(emp);
+        return nursingInsurance > 0;
+      });
+    } else if (this.filterNursingInsurance === 'without') {
+      filtered = filtered.filter(emp => {
+        const nursingInsurance = this.getNursingInsurance(emp);
+        return nursingInsurance === 0;
+      });
+    }
+
+    // ソートを適用
+    if (this.sortColumn) {
+      const column = this.columns.find(col => col.key === this.sortColumn);
+      if (column && column.sortable) {
+        filtered = filtered.sort((a, b) => {
+          let aValue: any;
+          let bValue: any;
+
+          switch (this.sortColumn) {
+            case 'id':
+              aValue = this.getEmployeeId(a);
+              bValue = this.getEmployeeId(b);
+              break;
+            case 'grade':
+              aValue = this.getGrade(a);
+              bValue = this.getGrade(b);
+              break;
+            default:
+              return 0;
+          }
+
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+          }
+
+          const aStr = String(aValue || '');
+          const bStr = String(bValue || '');
+          if (this.sortDirection === 'asc') {
+            return aStr.localeCompare(bStr, 'ja');
+          } else {
+            return bStr.localeCompare(aStr, 'ja');
+          }
+        });
+      }
+    }
+
+    this.sortedEmployees = filtered;
+  }
+
+  onFilterChange(): void {
+    this.applyFilters();
+  }
+
   onMonthChange(month: string): void {
     this.selectedMonth = month;
+    // フィルターをリセット
+    this.filterDepartment = '';
+    this.filterEmploymentType = '';
+    this.filterNursingInsurance = '';
     this.loadEmployees();
   }
 
@@ -226,65 +334,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.sortDirection = 'asc';
     }
 
-    this.sortedEmployees = [...this.employees].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (columnKey) {
-        case 'id':
-          aValue = this.getEmployeeId(a);
-          bValue = this.getEmployeeId(b);
-          break;
-        case 'name':
-          aValue = this.getEmployeeName(a);
-          bValue = this.getEmployeeName(b);
-          break;
-        case 'standardSalary':
-          aValue = this.getStandardSalary(a);
-          bValue = this.getStandardSalary(b);
-          break;
-        case 'grade':
-          aValue = this.getGrade(a);
-          bValue = this.getGrade(b);
-          break;
-        case 'healthInsurance':
-          aValue = this.getHealthInsurance(a);
-          bValue = this.getHealthInsurance(b);
-          break;
-        case 'welfarePension':
-          aValue = this.getWelfarePension(a);
-          bValue = this.getWelfarePension(b);
-          break;
-        case 'nursingInsurance':
-          aValue = this.getNursingInsurance(a);
-          bValue = this.getNursingInsurance(b);
-          break;
-        case 'personalBurden':
-          aValue = this.getPersonalBurden(a);
-          bValue = this.getPersonalBurden(b);
-          break;
-        case 'companyBurden':
-          aValue = this.getCompanyBurden(a);
-          bValue = this.getCompanyBurden(b);
-          break;
-        default:
-          return 0;
-      }
-
-      // 数値の場合は数値として比較
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-
-      // 文字列の場合は文字列として比較
-      const aStr = String(aValue || '');
-      const bStr = String(bValue || '');
-      if (this.sortDirection === 'asc') {
-        return aStr.localeCompare(bStr, 'ja');
-      } else {
-        return bStr.localeCompare(aStr, 'ja');
-      }
-    });
+    this.applyFilters();
   }
 
   getSortIcon(columnKey: string): string {

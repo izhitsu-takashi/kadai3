@@ -42,17 +42,59 @@
     </aside>
     <main class="dashboard-content">
       <div *ngIf="selectedMenuId === 'insurance-list'" class="insurance-list-container">
-        <div class="month-selector-container">
-          <label for="month-select" class="month-select-label">表示月:</label>
-          <select 
-            id="month-select" 
-            class="month-select"
-            [value]="selectedMonth"
-            (change)="onMonthChange($any($event.target).value)">
-            <option *ngFor="let month of availableMonths" [value]="month">
-              {{ month }}
-            </option>
-          </select>
+        <div class="filter-container">
+          <div class="filter-row">
+            <div class="filter-item">
+              <label for="month-select" class="filter-label">表示月:</label>
+              <select 
+                id="month-select" 
+                class="filter-select"
+                [value]="selectedMonth"
+                (change)="onMonthChange($any($event.target).value)">
+                <option *ngFor="let month of availableMonths" [value]="month">
+                  {{ month }}
+                </option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="department-filter" class="filter-label">部署:</label>
+              <select 
+                id="department-filter" 
+                class="filter-select"
+                [value]="filterDepartment"
+                (change)="filterDepartment = $any($event.target).value; onFilterChange()">
+                <option value="">すべて</option>
+                <option *ngFor="let dept of availableDepartments" [value]="dept">
+                  {{ dept }}
+                </option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="employment-type-filter" class="filter-label">雇用形態:</label>
+              <select 
+                id="employment-type-filter" 
+                class="filter-select"
+                [value]="filterEmploymentType"
+                (change)="filterEmploymentType = $any($event.target).value; onFilterChange()">
+                <option value="">すべて</option>
+                <option *ngFor="let type of availableEmploymentTypes" [value]="type">
+                  {{ type }}
+                </option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="nursing-insurance-filter" class="filter-label">介護保険:</label>
+              <select 
+                id="nursing-insurance-filter" 
+                class="filter-select"
+                [value]="filterNursingInsurance"
+                (change)="filterNursingInsurance = $any($event.target).value; onFilterChange()">
+                <option value="">すべて</option>
+                <option value="with">有</option>
+                <option value="without">無</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="table-container">
           <div *ngIf="isLoading" class="loading-message">
