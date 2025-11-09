@@ -159,7 +159,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   bonusColumns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
-    { key: 'standardBonus', label: '標準賞与額', type: 'number', sortable: false },
+    { key: 'standardBonus', label: '標準賞与額', type: 'number', sortable: true },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
     { key: 'welfarePension', label: '厚生年金料', type: 'number', sortable: false },
     { key: 'nursingInsurance', label: '介護保険料', type: 'number', sortable: false },
@@ -473,6 +473,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             case 'grade':
               aValue = this.getGrade(a as Employee);
               bValue = this.getGrade(b as Employee);
+              break;
+            case 'standardBonus':
+              aValue = this.getStandardBonus(a as Bonus);
+              bValue = this.getStandardBonus(b as Bonus);
               break;
             default:
               return 0;
