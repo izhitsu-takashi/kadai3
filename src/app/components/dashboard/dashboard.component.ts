@@ -153,7 +153,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'standardSalary', label: '標準報酬月額', type: 'number', sortable: false },
     { key: 'grade', label: '等級', type: 'number', sortable: true },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
-    { key: 'welfarePension', label: '厚生年金料', type: 'number', sortable: false },
+    { key: 'welfarePension', label: '厚生年金保険料', type: 'number', sortable: false },
     { key: 'nursingInsurance', label: '介護保険料', type: 'number', sortable: false },
     { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false },
     { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
@@ -164,7 +164,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'name', label: '氏名', type: 'string', sortable: false },
     { key: 'standardBonus', label: '標準賞与額', type: 'number', sortable: true },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
-    { key: 'welfarePension', label: '厚生年金料', type: 'number', sortable: false },
+    { key: 'welfarePension', label: '厚生年金保険料', type: 'number', sortable: false },
     { key: 'nursingInsurance', label: '介護保険料', type: 'number', sortable: false },
     { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false },
     { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
@@ -737,23 +737,81 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getPersonalBurden(employee: Employee | Bonus, isBonus: boolean = false): number {
-    // 健康保険料、厚生年金保険料、介護保険料の合計を折半（切り捨て）
+    // 健康保険料、厚生年金保険料、介護保険料を個別に計算
     const healthInsurance = this.getHealthInsurance(employee, isBonus);
     const welfarePension = this.getWelfarePension(employee, isBonus);
     const nursingInsurance = this.getNursingInsurance(employee, isBonus);
-    const total = healthInsurance + welfarePension + nursingInsurance;
-    // 折半して小数点以下を切り捨て
-    return Math.floor(total / 2);
+    
+    // 各保険料ごとに奇数チェックを行い、折半計算
+    let personalBurden = 0;
+    
+    // 健康保険料の本人負担額
+    if (healthInsurance % 2 === 1) {
+      // 奇数の場合、1円引いて折半
+      personalBurden += Math.floor((healthInsurance - 1) / 2);
+    } else {
+      // 偶数の場合、通常通り折半
+      personalBurden += Math.floor(healthInsurance / 2);
+    }
+    
+    // 厚生年金保険料の本人負担額
+    if (welfarePension % 2 === 1) {
+      // 奇数の場合、1円引いて折半
+      personalBurden += Math.floor((welfarePension - 1) / 2);
+    } else {
+      // 偶数の場合、通常通り折半
+      personalBurden += Math.floor(welfarePension / 2);
+    }
+    
+    // 介護保険料の本人負担額
+    if (nursingInsurance % 2 === 1) {
+      // 奇数の場合、1円引いて折半
+      personalBurden += Math.floor((nursingInsurance - 1) / 2);
+    } else {
+      // 偶数の場合、通常通り折半
+      personalBurden += Math.floor(nursingInsurance / 2);
+    }
+    
+    return personalBurden;
   }
 
   getCompanyBurden(employee: Employee | Bonus, isBonus: boolean = false): number {
-    // 健康保険料、厚生年金保険料、介護保険料の合計を折半（切り捨て）
+    // 健康保険料、厚生年金保険料、介護保険料を個別に計算
     const healthInsurance = this.getHealthInsurance(employee, isBonus);
     const welfarePension = this.getWelfarePension(employee, isBonus);
     const nursingInsurance = this.getNursingInsurance(employee, isBonus);
-    const total = healthInsurance + welfarePension + nursingInsurance;
-    // 折半して小数点以下を切り捨て
-    return Math.floor(total / 2);
+    
+    // 各保険料ごとに奇数チェックを行い、折半計算
+    let companyBurden = 0;
+    
+    // 健康保険料の会社負担額
+    if (healthInsurance % 2 === 1) {
+      // 奇数の場合、1円引いて折半し、1円を足す
+      companyBurden += Math.floor((healthInsurance - 1) / 2) + 1;
+    } else {
+      // 偶数の場合、通常通り折半
+      companyBurden += Math.floor(healthInsurance / 2);
+    }
+    
+    // 厚生年金保険料の会社負担額
+    if (welfarePension % 2 === 1) {
+      // 奇数の場合、1円引いて折半し、1円を足す
+      companyBurden += Math.floor((welfarePension - 1) / 2) + 1;
+    } else {
+      // 偶数の場合、通常通り折半
+      companyBurden += Math.floor(welfarePension / 2);
+    }
+    
+    // 介護保険料の会社負担額
+    if (nursingInsurance % 2 === 1) {
+      // 奇数の場合、1円引いて折半し、1円を足す
+      companyBurden += Math.floor((nursingInsurance - 1) / 2) + 1;
+    } else {
+      // 偶数の場合、通常通り折半
+      companyBurden += Math.floor(nursingInsurance / 2);
+    }
+    
+    return companyBurden;
   }
 
   // モーダル関連のメソッド
@@ -1046,32 +1104,68 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       
-      // 社員負担額の合計を計算（各項目別）
+      // 社員負担額の合計を計算（各項目別、奇数チェック付き）
       this.personalHealthInsurance = filteredEmployees.reduce((sum, emp) => {
-        return sum + (this.getHealthInsurance(emp, false) / 2); // 本人負担は半額
+        const healthInsurance = this.getHealthInsurance(emp, false);
+        // 奇数の場合、1円引いて折半
+        if (healthInsurance % 2 === 1) {
+          return sum + Math.floor((healthInsurance - 1) / 2);
+        } else {
+          return sum + Math.floor(healthInsurance / 2);
+        }
       }, 0);
       
       this.personalWelfarePension = filteredEmployees.reduce((sum, emp) => {
-        return sum + (this.getWelfarePension(emp, false) / 2); // 本人負担は半額
+        const welfarePension = this.getWelfarePension(emp, false);
+        // 奇数の場合、1円引いて折半
+        if (welfarePension % 2 === 1) {
+          return sum + Math.floor((welfarePension - 1) / 2);
+        } else {
+          return sum + Math.floor(welfarePension / 2);
+        }
       }, 0);
       
       this.personalNursingInsurance = filteredEmployees.reduce((sum, emp) => {
-        return sum + (this.getNursingInsurance(emp, false) / 2); // 本人負担は半額
+        const nursingInsurance = this.getNursingInsurance(emp, false);
+        // 奇数の場合、1円引いて折半
+        if (nursingInsurance % 2 === 1) {
+          return sum + Math.floor((nursingInsurance - 1) / 2);
+        } else {
+          return sum + Math.floor(nursingInsurance / 2);
+        }
       }, 0);
       
       this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
       
-      // 会社負担額の合計を計算（各項目別）
+      // 会社負担額の合計を計算（各項目別、奇数チェック付き）
       this.companyHealthInsurance = filteredEmployees.reduce((sum, emp) => {
-        return sum + (this.getHealthInsurance(emp, false) / 2); // 会社負担は半額
+        const healthInsurance = this.getHealthInsurance(emp, false);
+        // 奇数の場合、1円引いて折半し、1円を足す
+        if (healthInsurance % 2 === 1) {
+          return sum + Math.floor((healthInsurance - 1) / 2) + 1;
+        } else {
+          return sum + Math.floor(healthInsurance / 2);
+        }
       }, 0);
       
       this.companyWelfarePension = filteredEmployees.reduce((sum, emp) => {
-        return sum + (this.getWelfarePension(emp, false) / 2); // 会社負担は半額
+        const welfarePension = this.getWelfarePension(emp, false);
+        // 奇数の場合、1円引いて折半し、1円を足す
+        if (welfarePension % 2 === 1) {
+          return sum + Math.floor((welfarePension - 1) / 2) + 1;
+        } else {
+          return sum + Math.floor(welfarePension / 2);
+        }
       }, 0);
       
       this.companyNursingInsurance = filteredEmployees.reduce((sum, emp) => {
-        return sum + (this.getNursingInsurance(emp, false) / 2); // 会社負担は半額
+        const nursingInsurance = this.getNursingInsurance(emp, false);
+        // 奇数の場合、1円引いて折半し、1円を足す
+        if (nursingInsurance % 2 === 1) {
+          return sum + Math.floor((nursingInsurance - 1) / 2) + 1;
+        } else {
+          return sum + Math.floor(nursingInsurance / 2);
+        }
       }, 0);
       
       this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
@@ -1099,32 +1193,68 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       
-      // 社員負担額の合計を計算（各項目別）
+      // 社員負担額の合計を計算（各項目別、奇数チェック付き）
       this.personalHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
-        return sum + (this.getHealthInsurance(bonus, true) / 2); // 本人負担は半額
+        const healthInsurance = this.getHealthInsurance(bonus, true);
+        // 奇数の場合、1円引いて折半
+        if (healthInsurance % 2 === 1) {
+          return sum + Math.floor((healthInsurance - 1) / 2);
+        } else {
+          return sum + Math.floor(healthInsurance / 2);
+        }
       }, 0);
       
       this.personalWelfarePension = filteredBonuses.reduce((sum, bonus) => {
-        return sum + (this.getWelfarePension(bonus, true) / 2); // 本人負担は半額
+        const welfarePension = this.getWelfarePension(bonus, true);
+        // 奇数の場合、1円引いて折半
+        if (welfarePension % 2 === 1) {
+          return sum + Math.floor((welfarePension - 1) / 2);
+        } else {
+          return sum + Math.floor(welfarePension / 2);
+        }
       }, 0);
       
       this.personalNursingInsurance = filteredBonuses.reduce((sum, bonus) => {
-        return sum + (this.getNursingInsurance(bonus, true) / 2); // 本人負担は半額
+        const nursingInsurance = this.getNursingInsurance(bonus, true);
+        // 奇数の場合、1円引いて折半
+        if (nursingInsurance % 2 === 1) {
+          return sum + Math.floor((nursingInsurance - 1) / 2);
+        } else {
+          return sum + Math.floor(nursingInsurance / 2);
+        }
       }, 0);
       
       this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
       
-      // 会社負担額の合計を計算（各項目別）
+      // 会社負担額の合計を計算（各項目別、奇数チェック付き）
       this.companyHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
-        return sum + (this.getHealthInsurance(bonus, true) / 2); // 会社負担は半額
+        const healthInsurance = this.getHealthInsurance(bonus, true);
+        // 奇数の場合、1円引いて折半し、1円を足す
+        if (healthInsurance % 2 === 1) {
+          return sum + Math.floor((healthInsurance - 1) / 2) + 1;
+        } else {
+          return sum + Math.floor(healthInsurance / 2);
+        }
       }, 0);
       
       this.companyWelfarePension = filteredBonuses.reduce((sum, bonus) => {
-        return sum + (this.getWelfarePension(bonus, true) / 2); // 会社負担は半額
+        const welfarePension = this.getWelfarePension(bonus, true);
+        // 奇数の場合、1円引いて折半し、1円を足す
+        if (welfarePension % 2 === 1) {
+          return sum + Math.floor((welfarePension - 1) / 2) + 1;
+        } else {
+          return sum + Math.floor(welfarePension / 2);
+        }
       }, 0);
       
       this.companyNursingInsurance = filteredBonuses.reduce((sum, bonus) => {
-        return sum + (this.getNursingInsurance(bonus, true) / 2); // 会社負担は半額
+        const nursingInsurance = this.getNursingInsurance(bonus, true);
+        // 奇数の場合、1円引いて折半し、1円を足す
+        if (nursingInsurance % 2 === 1) {
+          return sum + Math.floor((nursingInsurance - 1) / 2) + 1;
+        } else {
+          return sum + Math.floor(nursingInsurance / 2);
+        }
       }, 0);
       
       this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
