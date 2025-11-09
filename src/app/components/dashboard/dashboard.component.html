@@ -314,6 +314,28 @@
               </div>
             </div>
 
+            <!-- 組合保険の場合の保険料引き下げ額入力 -->
+            <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
+              <label for="healthInsuranceReduction" class="form-label">保険料引き下げ額</label>
+              <div class="insurance-rate-input-wrapper">
+                <input 
+                  type="text" 
+                  id="healthInsuranceReduction" 
+                  class="form-input"
+                  [class.error]="healthInsuranceReductionError"
+                  [value]="healthInsuranceReductionDisplay"
+                  name="healthInsuranceReduction"
+                  [disabled]="!isHealthInsuranceEditing"
+                  placeholder="引き下げ額を入力"
+                  (input)="onHealthInsuranceReductionInput($event)"
+                  (blur)="onHealthInsuranceReductionBlur()">
+                <span class="percentage-symbol">円</span>
+              </div>
+              <div *ngIf="healthInsuranceReductionError" class="error-message">
+                {{ healthInsuranceReductionError }}
+              </div>
+            </div>
+
             <div class="form-actions">
               <button 
                 *ngIf="isHealthInsuranceEditing" 

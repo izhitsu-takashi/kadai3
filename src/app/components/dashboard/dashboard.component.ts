@@ -59,6 +59,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   insuranceRate: number = 0;
   insuranceRateDisplay: string = '';
   insuranceRateError: string = '';
+  healthInsuranceReduction: number = 0; // 保険料引き下げ額
+  healthInsuranceReductionDisplay: string = ''; // 表示用
+  healthInsuranceReductionError: string = ''; // エラーメッセージ
   isHealthInsuranceSaved: boolean = false;
   isHealthInsuranceEditing: boolean = true;
   
@@ -746,13 +749,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     let personalBurden = 0;
     
     // 健康保険料の本人負担額
+    let healthInsurancePersonal: number;
+    let actualReduction: number = 0; // 実際に差し引かれた額
     if (healthInsurance % 2 === 1) {
       // 奇数の場合、1円引いて折半
-      personalBurden += Math.floor((healthInsurance - 1) / 2);
+      healthInsurancePersonal = Math.floor((healthInsurance - 1) / 2);
     } else {
       // 偶数の場合、通常通り折半
-      personalBurden += Math.floor(healthInsurance / 2);
+      healthInsurancePersonal = Math.floor(healthInsurance / 2);
     }
+    
+    // 組合保険の場合、引き下げ額を適用
+    if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+      // 実際に差し引かれた額を計算（本人負担額を超えない）
+      actualReduction = Math.min(healthInsurancePersonal, this.healthInsuranceReduction);
+      healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
+    }
+    
+    personalBurden += healthInsurancePersonal;
     
     // 厚生年金保険料の本人負担額
     if (welfarePension % 2 === 1) {
@@ -785,13 +799,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     let companyBurden = 0;
     
     // 健康保険料の会社負担額
+    let healthInsuranceCompany: number;
     if (healthInsurance % 2 === 1) {
       // 奇数の場合、1円引いて折半し、1円を足す
-      companyBurden += Math.floor((healthInsurance - 1) / 2) + 1;
+      healthInsuranceCompany = Math.floor((healthInsurance - 1) / 2) + 1;
     } else {
       // 偶数の場合、通常通り折半
-      companyBurden += Math.floor(healthInsurance / 2);
+      healthInsuranceCompany = Math.floor(healthInsurance / 2);
     }
+    
+    // 組合保険の場合、実際に差し引かれた額を会社負担額に追加
+    if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+      // 本人負担額を計算（引き下げ前）
+      let healthInsurancePersonalBeforeReduction: number;
+      if (healthInsurance % 2 === 1) {
+        healthInsurancePersonalBeforeReduction = Math.floor((healthInsurance - 1) / 2);
+      } else {
+        healthInsurancePersonalBeforeReduction = Math.floor(healthInsurance / 2);
+      }
+      // 実際に差し引かれた額（本人負担額を超えない）
+      const actualReduction = Math.min(healthInsurancePersonalBeforeReduction, this.healthInsuranceReduction);
+      healthInsuranceCompany += actualReduction;
+    }
+    
+    companyBurden += healthInsuranceCompany;
     
     // 厚生年金保険料の会社負担額
     if (welfarePension % 2 === 1) {
@@ -1104,15 +1135,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       
-      // 社員負担額の合計を計算（各項目別、奇数チェック付き）
+      // 社員負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
       this.personalHealthInsurance = filteredEmployees.reduce((sum, emp) => {
         const healthInsurance = this.getHealthInsurance(emp, false);
+        let healthInsurancePersonal: number;
         // 奇数の場合、1円引いて折半
         if (healthInsurance % 2 === 1) {
-          return sum + Math.floor((healthInsurance - 1) / 2);
+          healthInsurancePersonal = Math.floor((healthInsurance - 1) / 2);
         } else {
-          return sum + Math.floor(healthInsurance / 2);
+          healthInsurancePersonal = Math.floor(healthInsurance / 2);
         }
+        // 組合保険の場合、引き下げ額を適用
+        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+          healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
+        }
+        return sum + healthInsurancePersonal;
       }, 0);
       
       this.personalWelfarePension = filteredEmployees.reduce((sum, emp) => {
@@ -1137,15 +1174,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
       
-      // 会社負担額の合計を計算（各項目別、奇数チェック付き）
+      // 会社負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
       this.companyHealthInsurance = filteredEmployees.reduce((sum, emp) => {
         const healthInsurance = this.getHealthInsurance(emp, false);
+        let healthInsuranceCompany: number;
         // 奇数の場合、1円引いて折半し、1円を足す
         if (healthInsurance % 2 === 1) {
-          return sum + Math.floor((healthInsurance - 1) / 2) + 1;
+          healthInsuranceCompany = Math.floor((healthInsurance - 1) / 2) + 1;
         } else {
-          return sum + Math.floor(healthInsurance / 2);
+          healthInsuranceCompany = Math.floor(healthInsurance / 2);
         }
+        // 組合保険の場合、実際に差し引かれた額を会社負担額に追加
+        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+          // 本人負担額を計算（引き下げ前）
+          let healthInsurancePersonalBeforeReduction: number;
+          if (healthInsurance % 2 === 1) {
+            healthInsurancePersonalBeforeReduction = Math.floor((healthInsurance - 1) / 2);
+          } else {
+            healthInsurancePersonalBeforeReduction = Math.floor(healthInsurance / 2);
+          }
+          // 実際に差し引かれた額（本人負担額を超えない）
+          const actualReduction = Math.min(healthInsurancePersonalBeforeReduction, this.healthInsuranceReduction);
+          healthInsuranceCompany += actualReduction;
+        }
+        return sum + healthInsuranceCompany;
       }, 0);
       
       this.companyWelfarePension = filteredEmployees.reduce((sum, emp) => {
@@ -1193,15 +1245,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       
-      // 社員負担額の合計を計算（各項目別、奇数チェック付き）
+      // 社員負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
       this.personalHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
         const healthInsurance = this.getHealthInsurance(bonus, true);
+        let healthInsurancePersonal: number;
         // 奇数の場合、1円引いて折半
         if (healthInsurance % 2 === 1) {
-          return sum + Math.floor((healthInsurance - 1) / 2);
+          healthInsurancePersonal = Math.floor((healthInsurance - 1) / 2);
         } else {
-          return sum + Math.floor(healthInsurance / 2);
+          healthInsurancePersonal = Math.floor(healthInsurance / 2);
         }
+        // 組合保険の場合、引き下げ額を適用
+        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+          healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
+        }
+        return sum + healthInsurancePersonal;
       }, 0);
       
       this.personalWelfarePension = filteredBonuses.reduce((sum, bonus) => {
@@ -1226,15 +1284,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
       
-      // 会社負担額の合計を計算（各項目別、奇数チェック付き）
+      // 会社負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
       this.companyHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
         const healthInsurance = this.getHealthInsurance(bonus, true);
+        let healthInsuranceCompany: number;
         // 奇数の場合、1円引いて折半し、1円を足す
         if (healthInsurance % 2 === 1) {
-          return sum + Math.floor((healthInsurance - 1) / 2) + 1;
+          healthInsuranceCompany = Math.floor((healthInsurance - 1) / 2) + 1;
         } else {
-          return sum + Math.floor(healthInsurance / 2);
+          healthInsuranceCompany = Math.floor(healthInsurance / 2);
         }
+        // 組合保険の場合、実際に差し引かれた額を会社負担額に追加
+        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+          // 本人負担額を計算（引き下げ前）
+          let healthInsurancePersonalBeforeReduction: number;
+          if (healthInsurance % 2 === 1) {
+            healthInsurancePersonalBeforeReduction = Math.floor((healthInsurance - 1) / 2);
+          } else {
+            healthInsurancePersonalBeforeReduction = Math.floor(healthInsurance / 2);
+          }
+          // 実際に差し引かれた額（本人負担額を超えない）
+          const actualReduction = Math.min(healthInsurancePersonalBeforeReduction, this.healthInsuranceReduction);
+          healthInsuranceCompany += actualReduction;
+        }
+        return sum + healthInsuranceCompany;
       }, 0);
       
       this.companyWelfarePension = filteredBonuses.reduce((sum, bonus) => {
@@ -1459,6 +1532,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 種別変更時に値をリセット
     if (type === 'kyokai') {
       this.insuranceRate = 0;
+      this.insuranceRateDisplay = '';
+      this.healthInsuranceReduction = 0;
+      this.healthInsuranceReductionDisplay = '';
     } else {
       this.prefecture = '';
     }
@@ -1529,6 +1605,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.prefecture = data['prefecture'] || '';
         this.insuranceRate = data['insuranceRate'] || 0;
         this.insuranceRateDisplay = this.insuranceRate > 0 ? this.insuranceRate.toString() : '';
+        this.healthInsuranceReduction = data['healthInsuranceReduction'] || 0;
+        this.healthInsuranceReductionDisplay = this.healthInsuranceReduction > 0 ? this.healthInsuranceReduction.toString() : '';
         
         // データが存在する場合は保存済み状態にする
         if ((this.healthInsuranceType === 'kyokai' && this.prefecture) ||
@@ -1586,6 +1664,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         type: this.healthInsuranceType,
         prefecture: this.prefecture,
         insuranceRate: this.insuranceRate,
+        healthInsuranceReduction: this.healthInsuranceReduction,
         updatedAt: new Date()
       }, { merge: true });
 
@@ -1593,7 +1672,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.isHealthInsuranceSaved = true;
       this.isHealthInsuranceEditing = false;
       
-      // 組合保険または協会けんぽの場合、保険料率が変更されたのでデータを再計算
+      // 組合保険または協会けんぽの場合、保険料率または引き下げ額が変更されたのでデータを再計算
       if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
           (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
         // テーブルデータを再読み込み（表示を更新）
@@ -1705,6 +1784,72 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 編集モードに切り替え
     this.isHealthInsuranceEditing = true;
     this.isHealthInsuranceSaved = false;
+  }
+
+  onHealthInsuranceReductionInput(event: any): void {
+    // エラーメッセージをクリア
+    this.healthInsuranceReductionError = '';
+    
+    // 入力値を取得
+    let value = event.target.value;
+    
+    // 空の場合は0に設定して終了
+    if (value === '' || value === null || value === undefined) {
+      this.healthInsuranceReduction = 0;
+      this.healthInsuranceReductionDisplay = '';
+      return;
+    }
+    
+    // 数字以外の文字が含まれているかチェック
+    if (!/^[0-9]*$/.test(value)) {
+      this.healthInsuranceReductionError = '数字のみ入力できます';
+      event.target.value = this.healthInsuranceReductionDisplay;
+      return;
+    }
+    
+    // 先頭の0を削除
+    if (value.length > 1 && value[0] === '0') {
+      value = value.replace(/^0+/, '');
+      if (value === '') {
+        value = '0';
+      }
+    }
+    
+    // 数値に変換
+    const numValue = parseInt(value, 10);
+    
+    // 負の数のチェック
+    if (value.includes('-')) {
+      this.healthInsuranceReductionError = '負の数は入力できません';
+      event.target.value = this.healthInsuranceReductionDisplay;
+      return;
+    }
+    
+    // 有効な数値の場合のみ更新
+    if (!isNaN(numValue)) {
+      this.healthInsuranceReduction = numValue;
+      this.healthInsuranceReductionDisplay = value;
+      event.target.value = value;
+    } else if (value !== '') {
+      // 無効な値の場合
+      this.healthInsuranceReductionError = '正しい数値を入力してください';
+      event.target.value = this.healthInsuranceReductionDisplay;
+    } else {
+      this.healthInsuranceReductionDisplay = value;
+    }
+  }
+
+  onHealthInsuranceReductionBlur(): void {
+    // エラーメッセージをクリア
+    this.healthInsuranceReductionError = '';
+    
+    // フォーカスが外れた時に値を正規化
+    if (this.healthInsuranceReduction !== null && this.healthInsuranceReduction !== undefined && !isNaN(this.healthInsuranceReduction)) {
+      this.healthInsuranceReductionDisplay = this.healthInsuranceReduction.toString();
+    } else if (this.healthInsuranceReductionDisplay === '') {
+      this.healthInsuranceReduction = 0;
+      this.healthInsuranceReductionDisplay = '';
+    }
   }
 
   // 書類作成関連のメソッド
