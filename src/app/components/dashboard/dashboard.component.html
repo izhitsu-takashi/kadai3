@@ -372,6 +372,22 @@
       </div>
       <div *ngIf="selectedMenuId === 'reports'" class="reports-container">
         <div class="report-filter-container">
+          <div class="report-table-type-selector">
+            <button 
+              type="button"
+              class="report-table-type-button"
+              [class.active]="reportTableType === 'salary'"
+              (click)="onReportTableTypeChange('salary')">
+              給与
+            </button>
+            <button 
+              type="button"
+              class="report-table-type-button"
+              [class.active]="reportTableType === 'bonus'"
+              (click)="onReportTableTypeChange('bonus')">
+              賞与
+            </button>
+          </div>
           <div class="filter-type-selector">
             <label class="filter-type-label">表示単位:</label>
             <div class="radio-group">
@@ -404,7 +420,7 @@
               class="filter-select"
               [value]="reportSelectedMonth"
               (change)="onReportMonthChange($any($event.target).value)">
-              <option *ngFor="let month of availableMonths" [value]="month">
+              <option *ngFor="let month of (reportTableType === 'salary' ? availableMonths : availableBonusMonths)" [value]="month">
                 {{ month }}
               </option>
             </select>
@@ -414,7 +430,7 @@
               class="filter-select"
               [value]="reportSelectedYear"
               (change)="onReportYearChange($any($event.target).value)">
-              <option *ngFor="let year of availableYears" [value]="year">
+              <option *ngFor="let year of (reportTableType === 'salary' ? availableYears : availableBonusYears)" [value]="year">
                 {{ year }}年
               </option>
             </select>

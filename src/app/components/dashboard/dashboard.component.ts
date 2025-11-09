@@ -128,11 +128,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   individualSelectedEmployee: Employee | null = null;
 
   // レポート用
+  reportTableType: 'salary' | 'bonus' = 'salary';
   reportEmployees: Employee[] = [];
+  reportBonuses: Bonus[] = [];
   reportFilterType: 'month' | 'year' = 'month';
   reportSelectedMonth: string = '';
   reportSelectedYear: string = '';
   availableYears: string[] = [];
+  availableBonusYears: string[] = [];
   personalBurdenTotal: number = 0;
   companyBurdenTotal: number = 0;
   personalHealthInsurance: number = 0;
@@ -816,6 +819,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // レポート関連のメソッド
   loadReportData(): void {
+    // 給与データを読み込む
     this.employeeService.getEmployees().subscribe({
       next: (data) => {
         this.reportEmployees = data;
@@ -844,16 +848,130 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.reportSelectedYear = this.availableYears[0];
         }
         
-        this.calculateReportTotals();
+        if (this.reportTableType === 'salary') {
+          this.calculateReportTotals();
+        }
       },
       error: (error) => {
         console.error('Error loading report data:', error);
       }
     });
+    
+    // 賞与データを読み込む
+    this.employeeService.getBonuses().subscribe({
+      next: (data) => {
+        this.reportBonuses = data;
+        
+        // 利用可能な年を取得
+        const yearsSet = new Set<string>();
+        data.forEach(bonus => {
+          const month = bonus.月 || bonus['month'];
+          if (month) {
+            // "2024年06月" から "2024" を抽出
+            const yearMatch = month.match(/^(\d{4})年/);
+            if (yearMatch) {
+              yearsSet.add(yearMatch[1]);
+            }
+          }
+        });
+        this.availableBonusYears = Array.from(yearsSet).sort();
+        
+        // デフォルトで最初の年を選択
+        if (this.availableBonusYears.length > 0 && !this.reportSelectedYear && this.reportTableType === 'bonus') {
+          this.reportSelectedYear = this.availableBonusYears[0];
+        }
+        
+        if (this.reportTableType === 'bonus') {
+          this.calculateReportTotals();
+        }
+      },
+      error: (error) => {
+        console.error('Error loading bonus report data:', error);
+      }
+    });
+  }
+
+  onReportTableTypeChange(type: 'salary' | 'bonus'): void {
+    // 現在のタイプと新しいタイプが異なる場合のみ、デフォルト値を設定
+    const isTypeChanged = this.reportTableType !== type;
+    this.reportTableType = type;
+    
+    // タイプが切り替わった場合のみ、月/年をリセット（フィルタータイプに応じて適切な値を設定）
+    if (isTypeChanged) {
+      if (this.reportFilterType === 'month') {
+        // 月フィルターの場合
+        if (type === 'salary') {
+          if (this.availableMonths.length > 0) {
+            this.reportSelectedMonth = this.availableMonths[0];
+          } else {
+            this.reportSelectedMonth = '';
+          }
+        } else {
+          if (this.availableBonusMonths.length > 0) {
+            this.reportSelectedMonth = this.availableBonusMonths[0];
+          } else {
+            this.reportSelectedMonth = '';
+          }
+        }
+      } else {
+        // 年フィルターの場合
+        if (type === 'salary') {
+          if (this.availableYears.length > 0) {
+            this.reportSelectedYear = this.availableYears[0];
+          } else {
+            this.reportSelectedYear = '';
+          }
+        } else {
+          if (this.availableBonusYears.length > 0) {
+            this.reportSelectedYear = this.availableBonusYears[0];
+          } else {
+            this.reportSelectedYear = '';
+          }
+        }
+      }
+    }
+    // タイプが変わらなかった場合は、現在のreportSelectedMonth/reportSelectedYearを維持
+    
+    this.calculateReportTotals();
+    setTimeout(() => {
+      this.updateCharts();
+    }, 100);
   }
 
   onReportFilterTypeChange(type: 'month' | 'year'): void {
     this.reportFilterType = type;
+    // フィルタータイプに応じて適切な値を設定
+    if (type === 'month') {
+      // 月フィルターに切り替えた場合
+      if (this.reportTableType === 'salary') {
+        if (this.availableMonths.length > 0) {
+          this.reportSelectedMonth = this.availableMonths[0];
+        } else {
+          this.reportSelectedMonth = '';
+        }
+      } else {
+        if (this.availableBonusMonths.length > 0) {
+          this.reportSelectedMonth = this.availableBonusMonths[0];
+        } else {
+          this.reportSelectedMonth = '';
+        }
+      }
+    } else {
+      // 年フィルターに切り替えた場合
+      if (this.reportTableType === 'salary') {
+        if (this.availableYears.length > 0) {
+          this.reportSelectedYear = this.availableYears[0];
+        } else {
+          this.reportSelectedYear = '';
+        }
+      } else {
+        if (this.availableBonusYears.length > 0) {
+          this.reportSelectedYear = this.availableBonusYears[0];
+        } else {
+          this.reportSelectedYear = '';
+        }
+      }
+    }
     this.calculateReportTotals();
     setTimeout(() => {
       this.updateCharts();
@@ -877,57 +995,140 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   calculateReportTotals(): void {
-    let filteredEmployees: Employee[] = [];
-    
-    if (this.reportFilterType === 'month') {
-      // 月単位でフィルタリング
-      filteredEmployees = this.reportEmployees.filter(emp => {
-        const month = emp.月 || emp.month;
-        return month === this.reportSelectedMonth;
-      });
-    } else {
-      // 年単位でフィルタリング
-      filteredEmployees = this.reportEmployees.filter(emp => {
-        const month = emp.月 || emp.month;
-        if (month) {
-          const yearMatch = month.match(/^(\d{4})年/);
-          if (yearMatch) {
-            return yearMatch[1] === this.reportSelectedYear;
-          }
-        }
-        return false;
-      });
+    // フィルター条件を確認
+    if (this.reportFilterType === 'month' && !this.reportSelectedMonth) {
+      // 月フィルターが選択されているが、月が選択されていない場合は計算しない
+      this.personalHealthInsurance = 0;
+      this.personalWelfarePension = 0;
+      this.personalNursingInsurance = 0;
+      this.personalBurdenTotal = 0;
+      this.companyHealthInsurance = 0;
+      this.companyWelfarePension = 0;
+      this.companyNursingInsurance = 0;
+      this.companyBurdenTotal = 0;
+      return;
     }
     
-    // 社員負担額の合計を計算（各項目別）
-    this.personalHealthInsurance = filteredEmployees.reduce((sum, emp) => {
-      return sum + (this.getHealthInsurance(emp) / 2); // 本人負担は半額
-    }, 0);
-    
-    this.personalWelfarePension = filteredEmployees.reduce((sum, emp) => {
-      return sum + (this.getWelfarePension(emp) / 2); // 本人負担は半額
-    }, 0);
-    
-    this.personalNursingInsurance = filteredEmployees.reduce((sum, emp) => {
-      return sum + (this.getNursingInsurance(emp) / 2); // 本人負担は半額
-    }, 0);
-    
-    this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
-    
-    // 会社負担額の合計を計算（各項目別）
-    this.companyHealthInsurance = filteredEmployees.reduce((sum, emp) => {
-      return sum + (this.getHealthInsurance(emp) / 2); // 会社負担は半額
-    }, 0);
-    
-    this.companyWelfarePension = filteredEmployees.reduce((sum, emp) => {
-      return sum + (this.getWelfarePension(emp) / 2); // 会社負担は半額
-    }, 0);
-    
-    this.companyNursingInsurance = filteredEmployees.reduce((sum, emp) => {
-      return sum + (this.getNursingInsurance(emp) / 2); // 会社負担は半額
-    }, 0);
-    
-    this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
+    if (this.reportFilterType === 'year' && !this.reportSelectedYear) {
+      // 年フィルターが選択されているが、年が選択されていない場合は計算しない
+      this.personalHealthInsurance = 0;
+      this.personalWelfarePension = 0;
+      this.personalNursingInsurance = 0;
+      this.personalBurdenTotal = 0;
+      this.companyHealthInsurance = 0;
+      this.companyWelfarePension = 0;
+      this.companyNursingInsurance = 0;
+      this.companyBurdenTotal = 0;
+      return;
+    }
+
+    if (this.reportTableType === 'salary') {
+      // 給与データの計算
+      let filteredEmployees: Employee[] = [];
+      
+      if (this.reportFilterType === 'month') {
+        // 月単位でフィルタリング（必ずreportSelectedMonthが設定されている）
+        filteredEmployees = this.reportEmployees.filter(emp => {
+          const month = emp.月 || emp.month;
+          return month === this.reportSelectedMonth;
+        });
+      } else {
+        // 年単位でフィルタリング（必ずreportSelectedYearが設定されている）
+        filteredEmployees = this.reportEmployees.filter(emp => {
+          const month = emp.月 || emp.month;
+          if (month) {
+            const yearMatch = month.match(/^(\d{4})年/);
+            if (yearMatch) {
+              return yearMatch[1] === this.reportSelectedYear;
+            }
+          }
+          return false;
+        });
+      }
+      
+      // 社員負担額の合計を計算（各項目別）
+      this.personalHealthInsurance = filteredEmployees.reduce((sum, emp) => {
+        return sum + (this.getHealthInsurance(emp, false) / 2); // 本人負担は半額
+      }, 0);
+      
+      this.personalWelfarePension = filteredEmployees.reduce((sum, emp) => {
+        return sum + (this.getWelfarePension(emp, false) / 2); // 本人負担は半額
+      }, 0);
+      
+      this.personalNursingInsurance = filteredEmployees.reduce((sum, emp) => {
+        return sum + (this.getNursingInsurance(emp, false) / 2); // 本人負担は半額
+      }, 0);
+      
+      this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
+      
+      // 会社負担額の合計を計算（各項目別）
+      this.companyHealthInsurance = filteredEmployees.reduce((sum, emp) => {
+        return sum + (this.getHealthInsurance(emp, false) / 2); // 会社負担は半額
+      }, 0);
+      
+      this.companyWelfarePension = filteredEmployees.reduce((sum, emp) => {
+        return sum + (this.getWelfarePension(emp, false) / 2); // 会社負担は半額
+      }, 0);
+      
+      this.companyNursingInsurance = filteredEmployees.reduce((sum, emp) => {
+        return sum + (this.getNursingInsurance(emp, false) / 2); // 会社負担は半額
+      }, 0);
+      
+      this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
+    } else {
+      // 賞与データの計算
+      let filteredBonuses: Bonus[] = [];
+      
+      if (this.reportFilterType === 'month') {
+        // 月単位でフィルタリング（必ずreportSelectedMonthが設定されている）
+        filteredBonuses = this.reportBonuses.filter(bonus => {
+          const month = bonus.月 || bonus['month'];
+          return month === this.reportSelectedMonth;
+        });
+      } else {
+        // 年単位でフィルタリング（必ずreportSelectedYearが設定されている）
+        filteredBonuses = this.reportBonuses.filter(bonus => {
+          const month = bonus.月 || bonus['month'];
+          if (month) {
+            const yearMatch = month.match(/^(\d{4})年/);
+            if (yearMatch) {
+              return yearMatch[1] === this.reportSelectedYear;
+            }
+          }
+          return false;
+        });
+      }
+      
+      // 社員負担額の合計を計算（各項目別）
+      this.personalHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
+        return sum + (this.getHealthInsurance(bonus, true) / 2); // 本人負担は半額
+      }, 0);
+      
+      this.personalWelfarePension = filteredBonuses.reduce((sum, bonus) => {
+        return sum + (this.getWelfarePension(bonus, true) / 2); // 本人負担は半額
+      }, 0);
+      
+      this.personalNursingInsurance = filteredBonuses.reduce((sum, bonus) => {
+        return sum + (this.getNursingInsurance(bonus, true) / 2); // 本人負担は半額
+      }, 0);
+      
+      this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
+      
+      // 会社負担額の合計を計算（各項目別）
+      this.companyHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
+        return sum + (this.getHealthInsurance(bonus, true) / 2); // 会社負担は半額
+      }, 0);
+      
+      this.companyWelfarePension = filteredBonuses.reduce((sum, bonus) => {
+        return sum + (this.getWelfarePension(bonus, true) / 2); // 会社負担は半額
+      }, 0);
+      
+      this.companyNursingInsurance = filteredBonuses.reduce((sum, bonus) => {
+        return sum + (this.getNursingInsurance(bonus, true) / 2); // 会社負担は半額
+      }, 0);
+      
+      this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
+    }
   }
 
   updateCharts(): void {
