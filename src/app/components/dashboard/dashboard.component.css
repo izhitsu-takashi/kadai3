@@ -200,6 +200,40 @@
   gap: 1rem;
 }
 
+.table-type-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table-type-button {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-type-button:hover {
+  border-color: #667eea;
+  background: #f7fafc;
+}
+
+.table-type-button.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.table-type-button.active:hover {
+  background: #5568d3;
+  border-color: #5568d3;
+}
+
 .filter-container {
   background: white;
   padding: 1.5rem;
@@ -1023,9 +1057,9 @@
   max-width: 800px;
   width: 100%;
   max-height: 90vh;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -1034,6 +1068,11 @@
   align-items: center;
   padding: 1.5rem 2rem;
   border-bottom: 2px solid #e2e8f0;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -1066,6 +1105,8 @@
 
 .modal-body {
   padding: 2rem;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .employee-info-container {

@@ -9,6 +9,7 @@ export interface Employee {
   ID?: number;
   氏名?: string;
   標準報酬月額?: number;
+  標準賞与額?: number;
   等級?: number;
   健康保険料?: number;
   厚生年金保険料?: number;
@@ -20,6 +21,7 @@ export interface Employee {
   // 英語キーもサポート（後方互換性のため）
   name?: string;
   standardSalary?: number;
+  standardBonus?: number;
   grade?: number;
   healthInsurance?: number;
   welfarePension?: number;
@@ -28,6 +30,23 @@ export interface Employee {
   companyBurden?: number;
   month?: string;
   age?: number;
+}
+
+export interface Bonus {
+  id?: string;
+  ID?: number;
+  氏名?: string;
+  標準賞与額?: number;
+  等級?: number;
+  健康保険料?: number;
+  厚生年金保険料?: number;
+  介護保険料?: number;
+  本人負担額?: number;
+  会社負担額?: number;
+  月?: string; // 月情報（例: "2025年06月"）
+  年齢?: number;
+  // その他のフィールドも必要に応じて追加
+  [key: string]: any;
 }
 
 @Injectable({
@@ -98,6 +117,33 @@ export class EmployeeService {
     }
     const employeeDocRef = doc(db, `${this.collectionName}/${id}`);
     return deleteDoc(employeeDocRef);
+  }
+
+  getBonuses(month?: string): Observable<Bonus[]> {
+    const db = this.getDb();
+    if (!db) {
+      // SSR環境やFirestoreが初期化されていない場合は空の配列を返す
+      return new Observable(observer => {
+        observer.next([]);
+        observer.complete();
+      });
+    }
+    const bonusesRef = collection(db, 'bonus');
+    return from(getDocs(bonusesRef)).pipe(
+      map(querySnapshot => {
+        let bonuses = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Bonus));
+        
+        // 月でフィルタリング
+        if (month) {
+          bonuses = bonuses.filter(bonus => bonus.月 === month || bonus['month'] === month);
+        }
+        
+        return bonuses;
+      })
+    );
   }
 }
 

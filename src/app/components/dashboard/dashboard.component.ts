@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } fr
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { EmployeeService, Employee } from '../../services/employee.service';
+import { EmployeeService, Employee, Bonus } from '../../services/employee.service';
 import { FirestoreService } from '../../services/firestore.service';
 import { ImportComponent } from '../import/import.component';
 import { Chart, registerables } from 'chart.js';
@@ -41,7 +41,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // モーダル用
   isModalOpen: boolean = false;
-  selectedEmployee: Employee | null = null;
+  selectedEmployee: Employee | Bonus | null = null;
 
   // 企業情報設定用
   companyInfo = {
@@ -80,14 +80,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   ];
 
   employees: Employee[] = [];
+  bonuses: Bonus[] = [];
   sortedEmployees: Employee[] = [];
+  sortedBonuses: Bonus[] = [];
   isLoading = false;
+  
+  // 給与/賞与の切り替え
+  tableType: 'salary' | 'bonus' = 'salary';
   
   sortColumn: string | null = null;
   sortDirection: 'asc' | 'desc' = 'asc';
 
   // 月選択用
   availableMonths: string[] = [];
+  availableBonusMonths: string[] = [];
   selectedMonth: string = '';
 
   // フィルター用
@@ -114,7 +120,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   personalBurdenChart: any = null;
   companyBurdenChart: any = null;
 
-  columns = [
+  salaryColumns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
     { key: 'standardSalary', label: '標準報酬月額', type: 'number', sortable: false },
@@ -125,6 +131,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false },
     { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
   ];
+  
+  bonusColumns = [
+    { key: 'id', label: '社員ID', type: 'number', sortable: true },
+    { key: 'name', label: '氏名', type: 'string', sortable: false },
+    { key: 'standardBonus', label: '標準賞与額', type: 'number', sortable: false },
+    { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
+    { key: 'welfarePension', label: '厚生年金料', type: 'number', sortable: false },
+    { key: 'nursingInsurance', label: '介護保険料', type: 'number', sortable: false },
+    { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false },
+    { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
+  ];
+  
+  get columns() {
+    return this.tableType === 'salary' ? this.salaryColumns : this.bonusColumns;
+  }
 
   constructor(
     private employeeService: EmployeeService,
@@ -135,8 +156,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     // まずすべてのデータを読み込んで利用可能な月のリストを取得
     this.loadAvailableMonths();
+    this.loadAvailableBonusMonths();
     // その後、選択された月のデータを読み込む
     this.loadEmployees();
+    this.loadBonuses();
     // レポート用のデータも読み込む
     this.loadReportData();
     // 保存された設定情報を読み込む
@@ -193,7 +216,29 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  loadAvailableBonusMonths(): void {
+    // すべての賞与データを読み込んで利用可能な月のリストを取得
+    this.employeeService.getBonuses().subscribe({
+      next: (data) => {
+        const monthsSet = new Set<string>();
+        data.forEach(bonus => {
+          const month = bonus.月 || bonus['month'];
+          if (month) {
+            monthsSet.add(month);
+          }
+        });
+        this.availableBonusMonths = Array.from(monthsSet).sort();
+      },
+      error: (error) => {
+        console.error('Error loading available bonus months:', error);
+      }
+    });
+  }
+
   loadEmployees(): void {
+    if (this.tableType !== 'salary') {
+      return;
+    }
     this.isLoading = true;
     // 必ず月を選択する必要がある
     if (!this.selectedMonth && this.availableMonths.length > 0) {
@@ -213,14 +258,37 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  updateFilterOptions(employees: Employee[]): void {
+  loadBonuses(): void {
+    if (this.tableType !== 'bonus') {
+      return;
+    }
+    this.isLoading = true;
+    // 必ず月を選択する必要がある
+    if (!this.selectedMonth && this.availableBonusMonths.length > 0) {
+      this.selectedMonth = this.availableBonusMonths[0];
+    }
+    this.employeeService.getBonuses(this.selectedMonth).subscribe({
+      next: (data) => {
+        this.bonuses = data;
+        this.updateFilterOptions(data);
+        this.applyBonusFilters();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading bonuses:', error);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  updateFilterOptions(data: Employee[] | Bonus[]): void {
     // 部署のリストを取得
     const departmentsSet = new Set<string>();
     const employmentTypesSet = new Set<string>();
     
-    employees.forEach(emp => {
-      const department = (emp as any).部署 ?? (emp as any).department;
-      const employmentType = (emp as any).雇用形態 ?? (emp as any).employmentType;
+    data.forEach(item => {
+      const department = (item as any).部署 ?? (item as any).department;
+      const employmentType = (item as any).雇用形態 ?? (item as any).employmentType;
       
       if (department) {
         departmentsSet.add(department);
@@ -306,7 +374,82 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onFilterChange(): void {
-    this.applyFilters();
+    if (this.tableType === 'salary') {
+      this.applyFilters();
+    } else {
+      this.applyBonusFilters();
+    }
+  }
+
+  applyBonusFilters(): void {
+    let filtered = [...this.bonuses];
+
+    // 部署でフィルター
+    if (this.filterDepartment) {
+      filtered = filtered.filter(bonus => {
+        const department = (bonus as any).部署 ?? (bonus as any).department;
+        return department === this.filterDepartment;
+      });
+    }
+
+    // 雇用形態でフィルター
+    if (this.filterEmploymentType) {
+      filtered = filtered.filter(bonus => {
+        const employmentType = (bonus as any).雇用形態 ?? (bonus as any).employmentType;
+        return employmentType === this.filterEmploymentType;
+      });
+    }
+
+    // 介護保険でフィルター
+    if (this.filterNursingInsurance === 'with') {
+      filtered = filtered.filter(bonus => {
+        const nursingInsurance = this.getNursingInsurance(bonus, true);
+        return nursingInsurance > 0;
+      });
+    } else if (this.filterNursingInsurance === 'without') {
+      filtered = filtered.filter(bonus => {
+        const nursingInsurance = this.getNursingInsurance(bonus, true);
+        return nursingInsurance === 0;
+      });
+    }
+
+    // ソートを適用
+    if (this.sortColumn) {
+      const column = this.columns.find(col => col.key === this.sortColumn);
+      if (column && column.sortable) {
+        filtered = filtered.sort((a, b) => {
+          let aValue: any;
+          let bValue: any;
+
+          switch (this.sortColumn) {
+            case 'id':
+              aValue = this.getEmployeeId(a as Employee);
+              bValue = this.getEmployeeId(b as Employee);
+              break;
+            case 'grade':
+              aValue = this.getGrade(a as Employee);
+              bValue = this.getGrade(b as Employee);
+              break;
+            default:
+              return 0;
+          }
+
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+          }
+
+          const aStr = String(aValue || '');
+          const bStr = String(bValue || '');
+          if (this.sortDirection === 'asc') {
+            return aStr.localeCompare(bStr, 'ja');
+          } else {
+            return bStr.localeCompare(aStr, 'ja');
+          }
+        });
+      }
+    }
+
+    this.sortedBonuses = filtered;
   }
 
   onMonthChange(month: string): void {
@@ -315,7 +458,31 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterDepartment = '';
     this.filterEmploymentType = '';
     this.filterNursingInsurance = '';
-    this.loadEmployees();
+    if (this.tableType === 'salary') {
+      this.loadEmployees();
+    } else {
+      this.loadBonuses();
+    }
+  }
+
+  onTableTypeChange(type: 'salary' | 'bonus'): void {
+    this.tableType = type;
+    // フィルターをリセット
+    this.filterDepartment = '';
+    this.filterEmploymentType = '';
+    this.filterNursingInsurance = '';
+    // 月をリセット
+    if (type === 'salary') {
+      if (this.availableMonths.length > 0) {
+        this.selectedMonth = this.availableMonths[0];
+      }
+      this.loadEmployees();
+    } else {
+      if (this.availableBonusMonths.length > 0) {
+        this.selectedMonth = this.availableBonusMonths[0];
+      }
+      this.loadBonuses();
+    }
   }
 
   sortTable(columnKey: string): void {
@@ -334,7 +501,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.sortDirection = 'asc';
     }
 
-    this.applyFilters();
+    if (this.tableType === 'salary') {
+      this.applyFilters();
+    } else {
+      this.applyBonusFilters();
+    }
   }
 
   getSortIcon(columnKey: string): string {
@@ -396,37 +567,60 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // データアクセサー（日本語キーと英語キーの両方に対応）
-  getEmployeeId(employee: Employee): number | string {
+  getEmployeeId(employee: Employee | Bonus): number | string {
     return employee.ID ?? employee.id ?? '';
   }
 
-  getEmployeeName(employee: Employee): string {
+  getEmployeeName(employee: Employee | Bonus): string {
     return employee.氏名 ?? employee.name ?? '';
   }
 
-  getStandardSalary(employee: Employee): number {
+  getStandardSalary(employee: Employee | Bonus): number {
     return employee.標準報酬月額 ?? employee.standardSalary ?? 0;
   }
 
-  getGrade(employee: Employee): number {
+  getStandardBonus(employee: Employee | Bonus): number {
+    return (employee as any).標準賞与額 ?? (employee as any)['standardBonus'] ?? 0;
+  }
+
+  getGrade(employee: Employee | Bonus): number {
     return employee.等級 ?? employee.grade ?? 0;
   }
 
-  getHealthInsurance(employee: Employee): number {
-    const standardSalary = this.getStandardSalary(employee);
+  getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
+    const baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
     
+    // 賞与の場合、標準賞与額が573万円以上の場合は573万円を上限とする
+    if (isBonus && baseAmount >= 5730000) {
+      const cappedAmount = 5730000;
+      
+      // 組合保険が選択されている場合、設定された保険料率を使用して計算
+      if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
+        return Math.round(cappedAmount * (this.insuranceRate / 100));
+      }
+      
+      // 協会けんぽが選択されている場合、都道府県に基づいた保険料率を使用して計算
+      if (this.healthInsuranceType === 'kyokai' && this.prefecture) {
+        const kenpoRate = this.kenpoRates[this.prefecture];
+        if (kenpoRate && kenpoRate.healthRate > 0) {
+          return Math.round(cappedAmount * (kenpoRate.healthRate / 100));
+        }
+      }
+    }
+    
+    // 通常の計算（給与、または賞与で上限未満の場合）
     // 組合保険が選択されている場合、設定された保険料率を使用して計算
     if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
-      // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
-      return Math.round(standardSalary * (this.insuranceRate / 100));
+      // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
+      return Math.round(baseAmount * (this.insuranceRate / 100));
     }
     
     // 協会けんぽが選択されている場合、都道府県に基づいた保険料率を使用して計算
     if (this.healthInsuranceType === 'kyokai' && this.prefecture) {
       const kenpoRate = this.kenpoRates[this.prefecture];
       if (kenpoRate && kenpoRate.healthRate > 0) {
-        // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
-        return Math.round(standardSalary * (kenpoRate.healthRate / 100));
+        // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
+        return Math.round(baseAmount * (kenpoRate.healthRate / 100));
       }
     }
     
@@ -434,9 +628,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return employee.健康保険料 ?? employee.healthInsurance ?? 0;
   }
 
-  getWelfarePension(employee: Employee): number {
+  getWelfarePension(employee: Employee | Bonus, isBonus: boolean = false): number {
     const grade = this.getGrade(employee);
     
+    // 賞与の場合、標準賞与額が150万円以上の場合は150万円を上限とする
+    if (isBonus) {
+      const baseAmount = this.getStandardBonus(employee);
+      const cappedAmount = baseAmount >= 1500000 ? 1500000 : baseAmount;
+      
+      // 保険料率設定から計算
+      if (this.welfarePensionRate > 0) {
+        // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
+        return Math.round(cappedAmount * (this.welfarePensionRate / 100));
+      }
+      // 設定がない場合は既存のデータを使用
+      return employee.厚生年金保険料 ?? employee.welfarePension ?? 0;
+    }
+    
+    // 給与の場合の計算
     // 等級1~4の場合は16104円
     if (grade >= 1 && grade <= 4) {
       return 16104;
@@ -449,15 +658,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // その他の場合は保険料率設定から計算
     if (this.welfarePensionRate > 0) {
-      const standardSalary = this.getStandardSalary(employee);
-      // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
-      return Math.round(standardSalary * (this.welfarePensionRate / 100));
+      const baseAmount = this.getStandardSalary(employee);
+      // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
+      return Math.round(baseAmount * (this.welfarePensionRate / 100));
     }
     // 設定がない場合は既存のデータを使用
     return employee.厚生年金保険料 ?? employee.welfarePension ?? 0;
   }
 
-  getNursingInsurance(employee: Employee): number {
+  getNursingInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
     // 年齢を取得（型アサーションを使用）
     const age = (employee as any).年齢 ?? (employee as any).age;
     
@@ -468,36 +677,36 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 40歳以上の場合は保険料率設定から計算
     if (this.nursingInsuranceRate > 0) {
-      const standardSalary = this.getStandardSalary(employee);
-      // 保険料率はパーセンテージなので、100で割ってから標準報酬月額を掛ける
-      return Math.round(standardSalary * (this.nursingInsuranceRate / 100));
+      const baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
+      // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
+      return Math.round(baseAmount * (this.nursingInsuranceRate / 100));
     }
     // 設定がない場合は既存のデータを使用
     return employee.介護保険料 ?? employee.nursingInsurance ?? 0;
   }
 
-  getPersonalBurden(employee: Employee): number {
+  getPersonalBurden(employee: Employee | Bonus, isBonus: boolean = false): number {
     // 健康保険料、厚生年金保険料、介護保険料の合計を折半（切り捨て）
-    const healthInsurance = this.getHealthInsurance(employee);
-    const welfarePension = this.getWelfarePension(employee);
-    const nursingInsurance = this.getNursingInsurance(employee);
+    const healthInsurance = this.getHealthInsurance(employee, isBonus);
+    const welfarePension = this.getWelfarePension(employee, isBonus);
+    const nursingInsurance = this.getNursingInsurance(employee, isBonus);
     const total = healthInsurance + welfarePension + nursingInsurance;
     // 折半して小数点以下を切り捨て
     return Math.floor(total / 2);
   }
 
-  getCompanyBurden(employee: Employee): number {
+  getCompanyBurden(employee: Employee | Bonus, isBonus: boolean = false): number {
     // 健康保険料、厚生年金保険料、介護保険料の合計を折半（切り捨て）
-    const healthInsurance = this.getHealthInsurance(employee);
-    const welfarePension = this.getWelfarePension(employee);
-    const nursingInsurance = this.getNursingInsurance(employee);
+    const healthInsurance = this.getHealthInsurance(employee, isBonus);
+    const welfarePension = this.getWelfarePension(employee, isBonus);
+    const nursingInsurance = this.getNursingInsurance(employee, isBonus);
     const total = healthInsurance + welfarePension + nursingInsurance;
     // 折半して小数点以下を切り捨て
     return Math.floor(total / 2);
   }
 
   // モーダル関連のメソッド
-  openEmployeeModal(employee: Employee): void {
+  openEmployeeModal(employee: Employee | Bonus): void {
     this.selectedEmployee = employee;
     this.isModalOpen = true;
   }
@@ -507,9 +716,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedEmployee = null;
   }
 
-  getEmployeeField(employee: Employee, field: string): any {
+  getEmployeeField(employee: Employee | Bonus, field: string): any {
     // 日本語キーと英語キーの両方をチェック
     return (employee as any)[field] ?? (employee as any)[this.getEnglishKey(field)] ?? '-';
+  }
+  
+  isBonusEmployee(employee: Employee | Bonus | null): boolean {
+    if (!employee) return false;
+    // 標準賞与額が存在する場合は賞与データと判断
+    return !!(employee as any).標準賞与額 || !!(employee as any).standardBonus;
   }
 
   getEnglishKey(japaneseKey: string): string {
