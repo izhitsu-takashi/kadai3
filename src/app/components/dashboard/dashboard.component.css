@@ -1240,7 +1240,7 @@
 .modal-overlay {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 250px;
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -1249,6 +1249,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+  padding-top: calc(80px + 1rem);
 }
 
 .modal-content {
@@ -1257,7 +1258,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   max-width: 800px;
   width: 100%;
-  max-height: 90vh;
+  max-height: calc(90vh - 80px - 2rem);
   display: flex;
   flex-direction: column;
   overflow: hidden;

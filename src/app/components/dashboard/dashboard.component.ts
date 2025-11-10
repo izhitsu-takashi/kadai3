@@ -585,10 +585,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onMonthChange(month: string): void {
     this.selectedMonth = month;
-    // フィルターをリセット
-    this.filterDepartment = '';
-    this.filterEmploymentType = '';
-    this.filterNursingInsurance = '';
+    // フィルターはリセットしない（現在の設定を維持）
     if (this.tableType === 'salary') {
       this.loadEmployees();
     } else {
