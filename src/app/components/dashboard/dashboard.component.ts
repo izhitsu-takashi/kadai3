@@ -1978,4 +1978,104 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   selectIndividualEmployee(employee: Employee): void {
     this.individualSelectedEmployee = employee;
   }
+
+  // CSV出力機能
+  exportToCSV(): void {
+    // 現在表示されているテーブルのデータを取得
+    const data = this.tableType === 'salary' ? this.sortedEmployees : this.sortedBonuses;
+    const columns = this.columns;
+    const tableTypeLabel = this.tableType === 'salary' ? '給与' : '賞与';
+    const month = this.selectedMonth || '';
+
+    if (!data || data.length === 0) {
+      alert('出力するデータがありません');
+      return;
+    }
+
+    // CSVの内容を構築
+    let csvContent = '';
+    
+    // 1行目: タイトル（yyyy年mm月　給与/賞与　一覧）
+    csvContent += `${month}　${tableTypeLabel}　一覧\n`;
+    
+    // 2行目: 空行
+    csvContent += '\n';
+    
+    // 3行目: ヘッダー行
+    const headers = columns.map(col => col.label);
+    csvContent += headers.join(',') + '\n';
+    
+    // 4行目以降: データ行
+    data.forEach(item => {
+      const row: string[] = [];
+      columns.forEach(column => {
+        let value: any = '';
+        
+        switch (column.key) {
+          case 'id':
+            value = this.getEmployeeId(item);
+            break;
+          case 'name':
+            value = this.getEmployeeName(item);
+            break;
+          case 'standardSalary':
+            value = this.getStandardSalary(item);
+            break;
+          case 'standardBonus':
+            value = this.getStandardBonus(item);
+            break;
+          case 'grade':
+            value = this.getGrade(item);
+            break;
+          case 'healthInsurance':
+            value = this.getHealthInsurance(item, this.tableType === 'bonus');
+            break;
+          case 'welfarePension':
+            value = this.getWelfarePension(item, this.tableType === 'bonus');
+            break;
+          case 'nursingInsurance':
+            value = this.getNursingInsurance(item, this.tableType === 'bonus');
+            break;
+          case 'personalBurden':
+            value = this.getPersonalBurden(item, this.tableType === 'bonus');
+            break;
+          case 'companyBurden':
+            value = this.getCompanyBurden(item, this.tableType === 'bonus');
+            break;
+          default:
+            value = (item as any)[column.key] ?? '';
+        }
+        
+        // 数値の場合はそのまま、文字列の場合はダブルクォートで囲む
+        if (typeof value === 'number') {
+          row.push(value.toString());
+        } else {
+          // CSVの特殊文字（カンマ、改行、ダブルクォート）をエスケープ
+          const escapedValue = String(value).replace(/"/g, '""');
+          row.push(`"${escapedValue}"`);
+        }
+      });
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // BOM付きUTF-8でエンコード（Excelで正しく開けるように）
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // ファイル名を生成（yyyy年mm月_給与/賞与_一覧.csv）
+    const fileName = `${month}_${tableTypeLabel}_一覧.csv`.replace(/\s+/g, '_');
+    
+    // ダウンロードリンクを作成
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // メモリを解放
+    URL.revokeObjectURL(url);
+  }
 }

@@ -234,6 +234,23 @@
   border-color: #5568d3;
 }
 
+.csv-export-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.csv-export-button:hover {
+  background: #38a169;
+}
+
 .filter-container {
   background: white;
   padding: 1.5rem;
