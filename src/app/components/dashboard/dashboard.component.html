@@ -1,9 +1,15 @@
-<div class="dashboard-container">
+<div class="dashboard-container" [class.tutorial-mode]="isTutorialMode">
   <header class="dashboard-header">
     <div class="header-content">
       <div class="app-name">{{ appName }}</div>
       <div class="header-actions">
-        <button class="notification-button" type="button">お知らせ</button>
+        <button 
+          class="notification-button" 
+          type="button"
+          (click)="toggleNotification()">
+          お知らせ
+          <span *ngIf="getUnreadNotificationCount() > 0" class="notification-badge">{{ getUnreadNotificationCount() }}</span>
+        </button>
         <button 
           class="logout-button" 
           type="button"
@@ -846,6 +852,32 @@
         <div class="info-row">
           <span class="info-label">会社負担額</span>
           <span class="info-value">{{ getCompanyBurden(selectedEmployee, isBonusEmployee(selectedEmployee)) | number }}円</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- お知らせモーダル -->
+<div *ngIf="isNotificationOpen" class="notification-overlay" (click)="closeNotification()">
+  <div class="notification-modal" (click)="$event.stopPropagation()">
+    <div class="notification-header">
+      <h3 class="notification-title">お知らせ</h3>
+      <button class="notification-close" (click)="closeNotification()">×</button>
+    </div>
+    <div class="notification-content">
+      <div *ngIf="notifications.length === 0" class="notification-empty">
+        <p>お知らせはありません</p>
+      </div>
+      <div 
+        *ngFor="let notification of notifications; let i = index" 
+        class="notification-item"
+        [class.notification-read]="notification.read"
+        (click)="markNotificationAsRead(i)">
+        <div class="notification-icon">{{ getNotificationIcon(notification.type) }}</div>
+        <div class="notification-text">
+          <p class="notification-message">{{ notification.message }}</p>
+          <p class="notification-date">{{ formatNotificationDate(notification.date) }}</p>
         </div>
       </div>
     </div>

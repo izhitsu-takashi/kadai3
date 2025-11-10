@@ -42,6 +42,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isSettingsExpanded: boolean = false;
   isLoggingOut: boolean = false;
 
+  // お知らせ用
+  isNotificationOpen: boolean = false;
+  notifications: Array<{ message: string; date: Date; type: 'rate-change' | 'type-change' | 'setup-required'; read: boolean }> = [];
+  previousHealthInsuranceRate: number = 0;
+  previousWelfarePensionRate: number = 18.3;
+  previousNursingInsuranceRate: number = 1.59;
+  previousHealthInsuranceType: 'kyokai' | 'kumiai' = 'kyokai';
+  previousPrefecture: string = '';
+
   // チュートリアル用
   isTutorialMode: boolean = false;
   currentTutorialStep: number = 0;
@@ -1726,8 +1735,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const oldWelfarePensionRate = this.welfarePensionRate;
+        const oldNursingInsuranceRate = this.nursingInsuranceRate;
+        
         this.welfarePensionRate = data['welfarePensionRate'] || 18.3;
         this.nursingInsuranceRate = data['nursingInsuranceRate'] || 1.59;
+        
+        // 保険料率が変更された場合、お知らせを追加（初回読み込み時は通知しない）
+        // 前の値がデフォルト値と同じ場合は初回読み込みと判断し、通知を追加しない
+        // また、oldWelfarePensionRateとoldNursingInsuranceRateが0の場合は初回読み込みと判断
+        if (this.previousWelfarePensionRate !== 18.3 && oldWelfarePensionRate > 0 && oldWelfarePensionRate !== this.welfarePensionRate) {
+          this.addNotification(`厚生年金保険料が${oldWelfarePensionRate}%から${this.welfarePensionRate}%に変更されました。`, 'rate-change');
+        }
+        if (this.previousNursingInsuranceRate !== 1.59 && oldNursingInsuranceRate > 0 && oldNursingInsuranceRate !== this.nursingInsuranceRate) {
+          this.addNotification(`介護保険料が${oldNursingInsuranceRate}%から${this.nursingInsuranceRate}%に変更されました。`, 'rate-change');
+        }
+        
+        // 前の値を更新
+        this.previousWelfarePensionRate = this.welfarePensionRate;
+        this.previousNursingInsuranceRate = this.nursingInsuranceRate;
         
         // 保険料率設定が読み込まれた後、データを再計算する
         this.loadEmployees();
@@ -1750,12 +1776,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const oldType = this.healthInsuranceType;
+        const oldPrefecture = this.prefecture;
+        const oldInsuranceRate = this.insuranceRate;
+        
         this.healthInsuranceType = data['type'] || 'kyokai';
         this.prefecture = data['prefecture'] || '';
         this.insuranceRate = data['insuranceRate'] || 0;
         this.insuranceRateDisplay = this.insuranceRate > 0 ? this.insuranceRate.toString() : '';
         this.healthInsuranceReduction = data['healthInsuranceReduction'] || 0;
         this.healthInsuranceReductionDisplay = this.healthInsuranceReduction > 0 ? this.healthInsuranceReduction.toString() : '';
+        
+        // 前の値を更新
+        this.previousHealthInsuranceType = this.healthInsuranceType;
+        this.previousPrefecture = this.prefecture;
+        this.previousHealthInsuranceRate = this.insuranceRate;
         
         // データが存在する場合は保存済み状態にする
         if ((this.healthInsuranceType === 'kyokai' && this.prefecture) ||
@@ -1783,8 +1818,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // バリデーション
     if (this.healthInsuranceType === 'kumiai') {
       // 保険料率のバリデーション
-      if (this.insuranceRate === null || this.insuranceRate === undefined || isNaN(this.insuranceRate)) {
+      if (this.insuranceRate === null || this.insuranceRate === undefined || isNaN(this.insuranceRate) || this.insuranceRate === 0) {
         alert('保険料率を正しく入力してください');
+        return;
+      }
+      
+      // 空白チェック（保険料率が空白の場合）
+      if (this.insuranceRateDisplay === '' || this.insuranceRateDisplay.trim() === '') {
+        alert('保険料率を入力してください');
+        return;
+      }
+      
+      // 引き下げ額の空白チェック
+      if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
+        alert('保険料引き下げ額を入力してください');
         return;
       }
       
@@ -1807,6 +1854,32 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
+      // 変更前の値を保存
+      const oldType = this.previousHealthInsuranceType;
+      const oldPrefecture = this.previousPrefecture;
+      const oldInsuranceRate = this.previousHealthInsuranceRate;
+      
+      // 健康保険種別の変更を検知
+      if (oldType && oldType !== this.healthInsuranceType) {
+        const oldTypeLabel = oldType === 'kyokai' ? '協会けんぽ' : '組合保険';
+        const newTypeLabel = this.healthInsuranceType === 'kyokai' ? '協会けんぽ' : '組合保険';
+        this.addNotification(`健康保険が${oldTypeLabel}から${newTypeLabel}に変更されました。`, 'type-change');
+      }
+      
+      // 健康保険料率の変更を検知（組合保険の場合）
+      if (this.healthInsuranceType === 'kumiai' && oldInsuranceRate > 0 && oldInsuranceRate !== this.insuranceRate) {
+        this.addNotification(`健康保険料が${oldInsuranceRate}%から${this.insuranceRate}%に変更されました。`, 'rate-change');
+      }
+      
+      // 協会けんぽの場合、都道府県が変更された場合も検知
+      if (this.healthInsuranceType === 'kyokai' && oldPrefecture && oldPrefecture !== this.prefecture) {
+        const oldRate = this.kenpoRates[oldPrefecture]?.healthRate || 0;
+        const newRate = this.kenpoRates[this.prefecture]?.healthRate || 0;
+        if (oldRate > 0 && newRate > 0 && oldRate !== newRate) {
+          this.addNotification(`健康保険料が${oldRate}%から${newRate}%に変更されました。`, 'rate-change');
+        }
+      }
+      
       // Firestoreに保存
       const docRef = doc(db, 'healthInsuranceSettings', 'settings');
       await setDoc(docRef, {
@@ -1816,6 +1889,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         healthInsuranceReduction: this.healthInsuranceReduction,
         updatedAt: new Date()
       }, { merge: true });
+
+      // 前の値を更新
+      this.previousHealthInsuranceType = this.healthInsuranceType;
+      this.previousPrefecture = this.prefecture;
+      this.previousHealthInsuranceRate = this.insuranceRate;
 
       // 保存完了の状態に変更
       this.isHealthInsuranceSaved = true;
@@ -2533,5 +2611,71 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // メモリを解放
     URL.revokeObjectURL(url);
+  }
+
+  // お知らせ関連のメソッド
+  addNotification(message: string, type: 'rate-change' | 'type-change' | 'setup-required'): void {
+    this.notifications.unshift({
+      message: message,
+      date: new Date(),
+      type: type,
+      read: false
+    });
+    // お知らせが10件を超えた場合は古いものを削除
+    if (this.notifications.length > 10) {
+      this.notifications = this.notifications.slice(0, 10);
+    }
+  }
+
+  markNotificationAsRead(index: number): void {
+    if (index >= 0 && index < this.notifications.length) {
+      this.notifications[index].read = true;
+    }
+  }
+
+  getUnreadNotificationCount(): number {
+    return this.notifications.filter(n => !n.read).length;
+  }
+
+
+  toggleNotification(): void {
+    this.isNotificationOpen = !this.isNotificationOpen;
+  }
+
+  closeNotification(): void {
+    this.isNotificationOpen = false;
+  }
+
+  formatNotificationDate(date: Date): string {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) {
+      return 'たった今';
+    } else if (minutes < 60) {
+      return `${minutes}分前`;
+    } else if (hours < 24) {
+      return `${hours}時間前`;
+    } else if (days < 7) {
+      return `${days}日前`;
+    } else {
+      return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+  }
+
+  getNotificationIcon(type: 'rate-change' | 'type-change' | 'setup-required'): string {
+    switch (type) {
+      case 'rate-change':
+        return '📊';
+      case 'type-change':
+        return '🔄';
+      case 'setup-required':
+        return '⚠️';
+      default:
+        return '📢';
+    }
   }
 }
