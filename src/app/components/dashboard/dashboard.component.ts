@@ -35,11 +35,53 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { label: '企業情報設定', id: 'company-settings' },
     { label: '健康保険設定', id: 'health-insurance-settings' },
     { label: '社員情報設定', id: 'employee-settings' },
-    { label: '保険料率照会', id: 'insurance-rate-inquiry' }
+    { label: '保険料率照会', id: 'insurance-rate-inquiry' },
+    { label: 'チュートリアル', id: 'tutorial' }
   ];
 
   isSettingsExpanded: boolean = false;
   isLoggingOut: boolean = false;
+
+  // チュートリアル用
+  isTutorialMode: boolean = false;
+  currentTutorialStep: number = 0;
+  tutorialSteps = [
+    {
+      menuId: 'insurance-list',
+      title: '保険料一覧ページ',
+      description: '社員ごとの社会保険料を一覧表示するページです。賞与にも対応しており、部署ごとにフィルターの設定なども行えます。'
+    },
+    {
+      menuId: 'documents',
+      title: '書類作成ページ',
+      description: '社会保険料を管理できる書類を自動で作成します。作成した書類はPDFにてダウンロードが可能です。'
+    },
+    {
+      menuId: 'reports',
+      title: '保険料レポートページ',
+      description: '指定した期間の社会保険料の合計額を確認できます。給与、賞与に対応しており、社員と会社の負担額が別々に表示されています。'
+    },
+    {
+      menuId: 'company-settings',
+      title: '企業情報設定ページ',
+      description: '企業情報設定ページでは、会社の情報を入力して保存します。この情報は書類作成機能にて使用します。'
+    },
+    {
+      menuId: 'health-insurance-settings',
+      title: '健康保険設定ページ',
+      description: '健康保険設定ページでは、健康保険料率の設定を行います。協会けんぽと組合保険をすぐに切り替え可能です。協会けんぽの際は自動で保険料率を決定し、組合保険の場合は自分で保険料率を設定できます。'
+    },
+    {
+      menuId: 'employee-settings',
+      title: '社員情報設定ページ',
+      description: '社員情報設定ページでは、既存の人事給与システムから社員データをインポートし、自動で保険料一覧テーブルを作成できます。'
+    },
+    {
+      menuId: 'insurance-rate-inquiry',
+      title: '保険料率照会ページ',
+      description: '保険料率照会ページでは、現在設定されている保険料率を表示します。'
+    }
+  ];
 
   // モーダル用
   isModalOpen: boolean = false;
@@ -633,8 +675,75 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectSettingsSubMenu(subMenuId: string): void {
+    // チュートリアルをクリックした場合
+    if (subMenuId === 'tutorial') {
+      this.startTutorial();
+      return;
+    }
     // サブメニューをクリックした場合は、そのページに遷移
     this.selectedMenuId = subMenuId;
+  }
+
+  startTutorial(): void {
+    this.isTutorialMode = true;
+    this.currentTutorialStep = 0;
+    this.showTutorialStep(0);
+  }
+
+  showTutorialStep(step: number): void {
+    if (step < 0 || step >= this.tutorialSteps.length) {
+      this.endTutorial();
+      return;
+    }
+    this.currentTutorialStep = step;
+    const stepData = this.tutorialSteps[step];
+    
+    // 該当ページに遷移
+    if (stepData.menuId === 'company-settings' || 
+        stepData.menuId === 'health-insurance-settings' || 
+        stepData.menuId === 'employee-settings' || 
+        stepData.menuId === 'insurance-rate-inquiry') {
+      // 設定のサブメニューの場合
+      this.selectedMenuId = stepData.menuId;
+      this.isSettingsExpanded = true;
+    } else {
+      // 通常のメニューの場合
+      this.selectedMenuId = stepData.menuId;
+      this.isSettingsExpanded = false;
+      
+      // レポートページに切り替えた場合はチャートを更新
+      if (stepData.menuId === 'reports') {
+        setTimeout(() => {
+          this.updateCharts();
+        }, 100);
+      }
+    }
+  }
+
+  nextTutorialStep(): void {
+    if (this.currentTutorialStep < this.tutorialSteps.length - 1) {
+      this.showTutorialStep(this.currentTutorialStep + 1);
+    } else {
+      this.endTutorial();
+    }
+  }
+
+  previousTutorialStep(): void {
+    if (this.currentTutorialStep > 0) {
+      this.showTutorialStep(this.currentTutorialStep - 1);
+    }
+  }
+
+  endTutorial(): void {
+    this.isTutorialMode = false;
+    this.currentTutorialStep = 0;
+  }
+
+  getCurrentTutorialStep(): any {
+    if (this.currentTutorialStep >= 0 && this.currentTutorialStep < this.tutorialSteps.length) {
+      return this.tutorialSteps[this.currentTutorialStep];
+    }
+    return null;
   }
 
   isSettingsSubMenuSelected(subMenuId: string): boolean {

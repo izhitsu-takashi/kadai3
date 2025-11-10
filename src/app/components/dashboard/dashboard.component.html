@@ -733,6 +733,39 @@
   </div>
 </div>
 
+<!-- チュートリアルオーバーレイ -->
+<div *ngIf="isTutorialMode" class="tutorial-overlay">
+  <div class="tutorial-modal" (click)="$event.stopPropagation()">
+    <div class="tutorial-header">
+      <h2 class="tutorial-title">{{ getCurrentTutorialStep()?.title }}</h2>
+      <button class="tutorial-close" (click)="endTutorial()" type="button">×</button>
+    </div>
+    <div class="tutorial-content">
+      <p class="tutorial-description">{{ getCurrentTutorialStep()?.description }}</p>
+      <div class="tutorial-progress">
+        <span class="tutorial-step-info">
+          {{ currentTutorialStep + 1 }} / {{ tutorialSteps.length }}
+        </span>
+      </div>
+    </div>
+    <div class="tutorial-footer">
+      <button 
+        class="tutorial-button tutorial-button-secondary" 
+        (click)="previousTutorialStep()" 
+        [disabled]="currentTutorialStep === 0"
+        type="button">
+        前へ
+      </button>
+      <button 
+        class="tutorial-button tutorial-button-primary" 
+        (click)="nextTutorialStep()" 
+        type="button">
+        {{ currentTutorialStep === tutorialSteps.length - 1 ? '終了' : '次へ' }}
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- 社員情報モーダル -->
 <div *ngIf="isModalOpen" class="modal-overlay" (click)="closeEmployeeModal()">
   <div class="modal-content" (click)="$event.stopPropagation()">
