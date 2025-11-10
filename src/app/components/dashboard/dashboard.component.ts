@@ -93,7 +93,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
   
-  sortColumn: string | null = null;
+  sortColumn: string | null = 'id'; // デフォルトで社員IDでソート
   sortDirection: 'asc' | 'desc' = 'asc';
 
   // 月選択用
@@ -397,40 +397,51 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // ソートを適用
-    if (this.sortColumn) {
-      const column = this.columns.find(col => col.key === this.sortColumn);
-      if (column && column.sortable) {
-        filtered = filtered.sort((a, b) => {
-          let aValue: any;
-          let bValue: any;
+    // ソートを適用（デフォルトで社員IDの昇順）
+    const sortKey = this.sortColumn || 'id';
+    const column = this.columns.find(col => col.key === sortKey);
+    if (column && column.sortable) {
+      filtered = filtered.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
 
-          switch (this.sortColumn) {
-            case 'id':
-              aValue = this.getEmployeeId(a);
-              bValue = this.getEmployeeId(b);
-              break;
-            case 'grade':
-              aValue = this.getGrade(a);
-              bValue = this.getGrade(b);
-              break;
-            default:
-              return 0;
-          }
+        switch (sortKey) {
+          case 'id':
+            aValue = this.getEmployeeId(a);
+            bValue = this.getEmployeeId(b);
+            break;
+          case 'grade':
+            aValue = this.getGrade(a);
+            bValue = this.getGrade(b);
+            break;
+          default:
+            return 0;
+        }
 
-          if (typeof aValue === 'number' && typeof bValue === 'number') {
-            return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-          }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        }
 
-          const aStr = String(aValue || '');
-          const bStr = String(bValue || '');
-          if (this.sortDirection === 'asc') {
-            return aStr.localeCompare(bStr, 'ja');
-          } else {
-            return bStr.localeCompare(aStr, 'ja');
-          }
-        });
-      }
+        const aStr = String(aValue || '');
+        const bStr = String(bValue || '');
+        if (this.sortDirection === 'asc') {
+          return aStr.localeCompare(bStr, 'ja');
+        } else {
+          return bStr.localeCompare(aStr, 'ja');
+        }
+      });
+    } else {
+      // デフォルトで社員IDの昇順でソート
+      filtered = filtered.sort((a, b) => {
+        const aValue = this.getEmployeeId(a);
+        const bValue = this.getEmployeeId(b);
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return aValue - bValue;
+        }
+        const aStr = String(aValue || '');
+        const bStr = String(bValue || '');
+        return aStr.localeCompare(bStr, 'ja');
+      });
     }
 
     this.sortedEmployees = filtered;
@@ -476,44 +487,55 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // ソートを適用
-    if (this.sortColumn) {
-      const column = this.columns.find(col => col.key === this.sortColumn);
-      if (column && column.sortable) {
-        filtered = filtered.sort((a, b) => {
-          let aValue: any;
-          let bValue: any;
+    // ソートを適用（デフォルトで社員IDの昇順）
+    const sortKey = this.sortColumn || 'id';
+    const column = this.columns.find(col => col.key === sortKey);
+    if (column && column.sortable) {
+      filtered = filtered.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
 
-          switch (this.sortColumn) {
-            case 'id':
-              aValue = this.getEmployeeId(a as Employee);
-              bValue = this.getEmployeeId(b as Employee);
-              break;
-            case 'grade':
-              aValue = this.getGrade(a as Employee);
-              bValue = this.getGrade(b as Employee);
-              break;
-            case 'standardBonus':
-              aValue = this.getStandardBonus(a as Bonus);
-              bValue = this.getStandardBonus(b as Bonus);
-              break;
-            default:
-              return 0;
-          }
+        switch (sortKey) {
+          case 'id':
+            aValue = this.getEmployeeId(a as Employee);
+            bValue = this.getEmployeeId(b as Employee);
+            break;
+          case 'grade':
+            aValue = this.getGrade(a as Employee);
+            bValue = this.getGrade(b as Employee);
+            break;
+          case 'standardBonus':
+            aValue = this.getStandardBonus(a as Bonus);
+            bValue = this.getStandardBonus(b as Bonus);
+            break;
+          default:
+            return 0;
+        }
 
-          if (typeof aValue === 'number' && typeof bValue === 'number') {
-            return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-          }
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return this.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        }
 
-          const aStr = String(aValue || '');
-          const bStr = String(bValue || '');
-          if (this.sortDirection === 'asc') {
-            return aStr.localeCompare(bStr, 'ja');
-          } else {
-            return bStr.localeCompare(aStr, 'ja');
-          }
-        });
-      }
+        const aStr = String(aValue || '');
+        const bStr = String(bValue || '');
+        if (this.sortDirection === 'asc') {
+          return aStr.localeCompare(bStr, 'ja');
+        } else {
+          return bStr.localeCompare(aStr, 'ja');
+        }
+      });
+    } else {
+      // デフォルトで社員IDの昇順でソート
+      filtered = filtered.sort((a, b) => {
+        const aValue = this.getEmployeeId(a as Employee);
+        const bValue = this.getEmployeeId(b as Employee);
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return aValue - bValue;
+        }
+        const aStr = String(aValue || '');
+        const bStr = String(bValue || '');
+        return aStr.localeCompare(bStr, 'ja');
+      });
     }
 
     this.sortedBonuses = filtered;
