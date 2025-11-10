@@ -60,7 +60,7 @@ async function importNewBonuses() {
   console.log(`Collection: bonus\n`);
   
   // JSONファイルを読み込む
-  const jsonFilePath = path.join(__dirname, '社員賞与データ_2025年6月_12月.json');
+  const jsonFilePath = path.join(__dirname, '社員賞与データ_賞与追加.json');
   const monthlyData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
   
   let successCount = 0;

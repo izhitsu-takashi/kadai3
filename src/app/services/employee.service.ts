@@ -8,6 +8,7 @@ export interface Employee {
   id?: string;
   ID?: number;
   氏名?: string;
+  給与?: number;
   標準報酬月額?: number;
   標準賞与額?: number;
   等級?: number;
@@ -20,6 +21,7 @@ export interface Employee {
   年齢?: number;
   // 英語キーもサポート（後方互換性のため）
   name?: string;
+  salary?: number;
   standardSalary?: number;
   standardBonus?: number;
   grade?: number;
@@ -36,6 +38,7 @@ export interface Bonus {
   id?: string;
   ID?: number;
   氏名?: string;
+  賞与?: number;
   標準賞与額?: number;
   等級?: number;
   健康保険料?: number;
@@ -46,6 +49,7 @@ export interface Bonus {
   月?: string; // 月情報（例: "2025年06月"）
   年齢?: number;
   // その他のフィールドも必要に応じて追加
+  bonus?: number;
   [key: string]: any;
 }
 

@@ -60,7 +60,7 @@ async function importNewEmployees() {
   console.log(`Collection: employee\n`);
   
   // JSONファイルを読み込む
-  const jsonFilePath = path.join(__dirname, '社員テストデータ.json');
+  const jsonFilePath = path.join(__dirname, '社員テストデータ_給与追加.json');
   const monthlyData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
   
   let successCount = 0;

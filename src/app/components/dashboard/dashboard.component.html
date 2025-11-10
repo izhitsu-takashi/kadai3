@@ -145,6 +145,7 @@
               <tr *ngFor="let employee of sortedEmployees" (click)="openEmployeeModal(employee)" class="employee-row">
                 <td>{{ getEmployeeId(employee) }}</td>
                 <td>{{ getEmployeeName(employee) }}</td>
+                <td>{{ getSalary(employee) | number }}</td>
                 <td>{{ getStandardSalary(employee) | number }}</td>
                 <td>{{ getGrade(employee) }}</td>
                 <td>{{ getHealthInsurance(employee, false) | number }}</td>
@@ -173,6 +174,7 @@
               <tr *ngFor="let bonus of sortedBonuses" (click)="openEmployeeModal(bonus)" class="employee-row">
                 <td>{{ getEmployeeId(bonus) }}</td>
                 <td>{{ getEmployeeName(bonus) }}</td>
+                <td>{{ getBonus(bonus) | number }}</td>
                 <td>{{ getStandardBonus(bonus) | number }}</td>
                 <td>{{ getHealthInsurance(bonus, true) | number }}</td>
                 <td>{{ getWelfarePension(bonus, true) | number }}</td>
@@ -324,7 +326,7 @@
 
             <!-- 組合保険の場合の保険料引き下げ額入力 -->
             <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
-              <label for="healthInsuranceReduction" class="form-label">保険料引き下げ額</label>
+              <label for="healthInsuranceReduction" class="form-label">従業員負担の保険料引き下げ額</label>
               <div class="insurance-rate-input-wrapper">
                 <input 
                   type="text" 

@@ -108,11 +108,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 書類作成用
   documentTypes = [
-    { id: 'document1', label: '書類1' },
-    { id: 'document2', label: '書類2' },
-    { id: 'document3', label: '書類3' },
-    { id: 'document4', label: '書類4' },
-    { id: 'document5', label: '書類5' }
+    { id: 'document1', label: '社会保険料控除一覧表' },
+    { id: 'document2', label: '標準報酬月額一覧' },
+    { id: 'document3', label: '標準賞与額一覧' },
+    { id: 'document4', label: '月次給与レポート' },
+    { id: 'document5', label: '月次賞与レポート' },
   ];
   selectedDocumentType: string = 'document1';
   documentCreationMode: 'bulk' | 'individual' = 'bulk';
@@ -153,6 +153,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   salaryColumns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
+    { key: 'salary', label: '給与', type: 'number', sortable: false },
     { key: 'standardSalary', label: '標準報酬月額', type: 'number', sortable: false },
     { key: 'grade', label: '等級', type: 'number', sortable: true },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
@@ -165,6 +166,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   bonusColumns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
+    { key: 'bonus', label: '賞与', type: 'number', sortable: false },
     { key: 'standardBonus', label: '標準賞与額', type: 'number', sortable: true },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
     { key: 'welfarePension', label: '厚生年金保険料', type: 'number', sortable: false },
@@ -635,6 +637,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getStandardBonus(employee: Employee | Bonus): number {
     return (employee as any).標準賞与額 ?? (employee as any)['standardBonus'] ?? 0;
+  }
+
+  getSalary(employee: Employee | Bonus): number {
+    return (employee as any).給与 ?? (employee as any).salary ?? 0;
+  }
+
+  getBonus(employee: Employee | Bonus): number {
+    return (employee as any).賞与 ?? (employee as any).bonus ?? 0;
   }
 
   getGrade(employee: Employee | Bonus): number {
@@ -2017,6 +2027,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             break;
           case 'name':
             value = this.getEmployeeName(item);
+            break;
+          case 'salary':
+            value = this.getSalary(item);
+            break;
+          case 'bonus':
+            value = this.getBonus(item);
             break;
           case 'standardSalary':
             value = this.getStandardSalary(item);
