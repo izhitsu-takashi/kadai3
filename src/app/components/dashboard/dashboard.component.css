@@ -656,6 +656,7 @@
   align-items: center;
   justify-content: center;
   min-height: 80px;
+  margin-bottom: 1rem;
 }
 
 .rate-value {
@@ -1574,4 +1575,31 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+.rate-value-note {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #718096;
+  margin: 0;
+  text-align: left;
+  line-height: 1.8;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.rate-value-note p {
+  margin: 0.25rem 0;
+  text-align: left;
+}
+
+.rate-card-content .rate-value-note {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #4a5568;
+  margin: 0;
+  text-align: center;
+  line-height: 1.6;
+  padding-top: 0;
+  border-top: none;
 }

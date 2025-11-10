@@ -373,6 +373,9 @@
               <div class="rate-card-content">
                 <p class="rate-value">18.3%</p>
               </div>
+              <div class="rate-value-note">
+                <p>※厚生年金保険料、介護保険料は令和7年度の料率です。</p>
+              </div>
             </div>
             <div class="rate-card">
               <div class="rate-card-header">
@@ -380,6 +383,10 @@
               </div>
               <div class="rate-card-content">
                 <p class="rate-value">1.59%</p>
+              </div>
+              <div class="rate-value-note">
+                <p>※厚生年金保険料、介護保険料は令和7年度の料率です。</p>
+                <p>※介護保険料は40歳以上の方が対象です。</p>
               </div>
             </div>
             <div class="rate-card">
@@ -392,6 +399,9 @@
                 <p *ngIf="healthInsuranceType === 'kyokai' && prefecture && !kenpoRates[prefecture]" class="rate-value-note">{{ prefecture }}</p>
                 <p *ngIf="healthInsuranceType === 'kyokai' && !prefecture" class="rate-value-note">未設定</p>
                 <p *ngIf="healthInsuranceType === 'kumiai' && insuranceRate === 0" class="rate-value-note">未設定</p>
+              </div>
+              <div class="rate-value-note">
+                <p>※健康保険料は協会けんぽの場合、都道府県によって料率が異なります。</p>
               </div>
             </div>
           </div>
