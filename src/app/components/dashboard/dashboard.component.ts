@@ -1024,6 +1024,77 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedEmployee = null;
   }
 
+  // モーダルから明細書を作成
+  createPayslipFromModal(): void {
+    if (!this.selectedEmployee) {
+      alert('社員情報が選択されていません');
+      return;
+    }
+
+    if (!this.selectedMonth) {
+      alert('月が選択されていません');
+      return;
+    }
+
+    const isBonus = this.tableType === 'bonus';
+    const month = this.selectedMonth;
+
+    // 選択された社員のデータを取得
+    if (isBonus) {
+      this.employeeService.getBonuses(month).subscribe({
+        next: (allBonuses) => {
+          const empId = this.getEmployeeId(this.selectedEmployee!);
+          const filtered = allBonuses.filter(bonus => {
+            const bonusMonth = bonus.月 || bonus['month'];
+            const bonusEmpId = this.getEmployeeId(bonus);
+            return bonusMonth === month && bonusEmpId === empId;
+          });
+
+          if (filtered.length === 0) {
+            alert('該当するデータがありません');
+            return;
+          }
+
+          // 一時的にpayslipSelectedMonthを設定してPDF生成
+          const originalPayslipMonth = this.payslipSelectedMonth;
+          this.payslipSelectedMonth = month;
+          this.generatePayslipPDF(filtered as any, isBonus);
+          this.payslipSelectedMonth = originalPayslipMonth;
+        },
+        error: (error) => {
+          console.error('Error loading bonuses for payslip:', error);
+          alert('データの読み込みに失敗しました');
+        }
+      });
+    } else {
+      this.employeeService.getEmployees(month).subscribe({
+        next: (allEmployees) => {
+          const empId = this.getEmployeeId(this.selectedEmployee!);
+          const filtered = allEmployees.filter(emp => {
+            const empMonth = emp.月 || emp.month;
+            const employeeEmpId = this.getEmployeeId(emp);
+            return empMonth === month && employeeEmpId === empId;
+          });
+
+          if (filtered.length === 0) {
+            alert('該当するデータがありません');
+            return;
+          }
+
+          // 一時的にpayslipSelectedMonthを設定してPDF生成
+          const originalPayslipMonth = this.payslipSelectedMonth;
+          this.payslipSelectedMonth = month;
+          this.generatePayslipPDF(filtered, isBonus);
+          this.payslipSelectedMonth = originalPayslipMonth;
+        },
+        error: (error) => {
+          console.error('Error loading employees for payslip:', error);
+          alert('データの読み込みに失敗しました');
+        }
+      });
+    }
+  }
+
   getEmployeeField(employee: Employee | Bonus, field: string): any {
     // 日本語キーと英語キーの両方をチェック
     return (employee as any)[field] ?? (employee as any)[this.getEnglishKey(field)] ?? '-';

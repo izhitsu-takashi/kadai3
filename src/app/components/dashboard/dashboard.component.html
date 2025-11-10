@@ -827,7 +827,10 @@
   <div class="modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2 class="modal-title">社員情報</h2>
-      <button class="modal-close-button" (click)="closeEmployeeModal()">×</button>
+      <div class="modal-header-actions">
+        <button class="modal-create-button" (click)="createPayslipFromModal()" type="button">明細作成</button>
+        <button class="modal-close-button" (click)="closeEmployeeModal()">×</button>
+      </div>
     </div>
     <div class="modal-body" *ngIf="selectedEmployee">
       <div class="employee-info-container">
