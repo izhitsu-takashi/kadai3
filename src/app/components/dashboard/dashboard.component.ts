@@ -7,6 +7,8 @@ import { FirestoreService } from '../../services/firestore.service';
 import { ImportComponent } from '../import/import.component';
 import { Chart, registerables } from 'chart.js';
 import { Firestore, collection, doc, setDoc, getDoc, getDocs } from 'firebase/firestore';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 Chart.register(...registerables);
 
@@ -130,6 +132,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   individualSearchResults: Employee[] = [];
   individualSelectedEmployee: Employee | null = null;
 
+  // 書類作成用の期間選択
+  documentPeriodType: 'month' | 'year' = 'month';
+  documentSelectedMonth: string = '';
+  documentSelectedYear: string = '';
+  documentAvailableMonths: string[] = [];
+  documentAvailableYears: string[] = [];
+
   // レポート用
   reportTableType: 'salary' | 'bonus' = 'salary';
   reportEmployees: Employee[] = [];
@@ -203,6 +212,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadInsuranceRateSettings();
     // 書類作成用の部署リストを読み込む
     this.loadDepartmentsForDocuments();
+    // 書類作成用の期間リストを読み込む
+    this.loadDocumentPeriods();
   }
 
   loadDepartmentsForDocuments(): void {
@@ -1987,6 +1998,307 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectIndividualEmployee(employee: Employee): void {
     this.individualSelectedEmployee = employee;
+  }
+
+  // 書類作成用の期間リストを読み込む
+  loadDocumentPeriods(): void {
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        const monthsSet = new Set<string>();
+        const yearsSet = new Set<string>();
+        data.forEach(emp => {
+          const month = emp.月 || emp.month;
+          if (month) {
+            monthsSet.add(month);
+            // 年を抽出
+            const yearMatch = month.match(/^(\d{4})年/);
+            if (yearMatch) {
+              yearsSet.add(yearMatch[1]);
+            }
+          }
+        });
+        this.documentAvailableMonths = Array.from(monthsSet).sort();
+        this.documentAvailableYears = Array.from(yearsSet).sort();
+        
+        // デフォルト値を設定
+        if (this.documentAvailableMonths.length > 0 && !this.documentSelectedMonth) {
+          this.documentSelectedMonth = this.documentAvailableMonths[0];
+        }
+        if (this.documentAvailableYears.length > 0 && !this.documentSelectedYear) {
+          this.documentSelectedYear = this.documentAvailableYears[0];
+        }
+      },
+      error: (error) => {
+        console.error('Error loading document periods:', error);
+      }
+    });
+  }
+
+  // 書類作成
+  createDocument(): void {
+    if (this.selectedDocumentType === 'document1') {
+      // 社会保険料控除一覧表
+      this.createInsuranceDeductionList();
+    } else {
+      alert('この書類タイプはまだ実装されていません');
+    }
+  }
+
+  // 社会保険料控除一覧表を作成
+  createInsuranceDeductionList(): void {
+    // フィルターに該当する社員を取得
+    let targetEmployees: Employee[] = [];
+    
+    if (this.documentCreationMode === 'bulk') {
+      // 一括作成の場合
+      this.employeeService.getEmployees().subscribe({
+        next: (allEmployees) => {
+          // 期間でフィルタリング
+          let filteredByPeriod: Employee[] = [];
+          if (this.documentPeriodType === 'month') {
+            filteredByPeriod = allEmployees.filter(emp => {
+              const month = emp.月 || emp.month;
+              return month === this.documentSelectedMonth;
+            });
+          } else {
+            filteredByPeriod = allEmployees.filter(emp => {
+              const month = emp.月 || emp.month;
+              if (month) {
+                const yearMatch = month.match(/^(\d{4})年/);
+                if (yearMatch) {
+                  return yearMatch[1] === this.documentSelectedYear;
+                }
+              }
+              return false;
+            });
+          }
+          
+          // フィルター条件でフィルタリング
+          targetEmployees = this.filterEmployeesForDocument(filteredByPeriod);
+          
+          // データを集計してPDFを作成
+          this.generateInsuranceDeductionPDF(targetEmployees);
+        },
+        error: (error) => {
+          console.error('Error loading employees for document:', error);
+          alert('データの読み込みに失敗しました');
+        }
+      });
+    } else {
+      // 個別作成の場合
+      if (!this.individualSelectedEmployee) {
+        alert('社員を選択してください');
+        return;
+      }
+      
+      this.employeeService.getEmployees().subscribe({
+        next: (allEmployees) => {
+          // 期間でフィルタリング
+          let filteredByPeriod: Employee[] = [];
+          if (this.documentPeriodType === 'month') {
+            filteredByPeriod = allEmployees.filter(emp => {
+              const month = emp.月 || emp.month;
+              const empId = this.getEmployeeId(emp);
+              const selectedId = this.getEmployeeId(this.individualSelectedEmployee!);
+              return month === this.documentSelectedMonth && empId === selectedId;
+            });
+          } else {
+            filteredByPeriod = allEmployees.filter(emp => {
+              const month = emp.月 || emp.month;
+              const empId = this.getEmployeeId(emp);
+              const selectedId = this.getEmployeeId(this.individualSelectedEmployee!);
+              if (month) {
+                const yearMatch = month.match(/^(\d{4})年/);
+                if (yearMatch && yearMatch[1] === this.documentSelectedYear && empId === selectedId) {
+                  return true;
+                }
+              }
+              return false;
+            });
+          }
+          
+          targetEmployees = filteredByPeriod;
+          
+          // データを集計してPDFを作成
+          this.generateInsuranceDeductionPDF(targetEmployees);
+        },
+        error: (error) => {
+          console.error('Error loading employees for document:', error);
+          alert('データの読み込みに失敗しました');
+        }
+      });
+    }
+  }
+
+  // 書類作成用の社員フィルター
+  filterEmployeesForDocument(employees: Employee[]): Employee[] {
+    let filtered = employees;
+    
+    if (this.bulkFilterType === 'department' && this.bulkFilterDepartment) {
+      filtered = filtered.filter(emp => {
+        const dept = (emp as any).部署 ?? (emp as any).department;
+        return dept === this.bulkFilterDepartment;
+      });
+    } else if (this.bulkFilterType === 'nursing') {
+      if (this.bulkFilterNursingInsurance === 'with') {
+        filtered = filtered.filter(emp => {
+          const age = (emp as any).年齢 ?? (emp as any).age;
+          return age !== undefined && age !== null && age >= 40;
+        });
+      } else if (this.bulkFilterNursingInsurance === 'without') {
+        filtered = filtered.filter(emp => {
+          const age = (emp as any).年齢 ?? (emp as any).age;
+          return age === undefined || age === null || age < 40;
+        });
+      }
+    } else if (this.bulkFilterType === 'custom') {
+      const selectedIds = new Set(this.bulkSelectedEmployees.map(emp => this.getEmployeeId(emp)));
+      filtered = filtered.filter(emp => selectedIds.has(this.getEmployeeId(emp)));
+    }
+    
+    return filtered;
+  }
+
+  // 社会保険料控除一覧表のPDFを生成
+  generateInsuranceDeductionPDF(employees: Employee[]): void {
+    if (employees.length === 0) {
+      alert('該当する社員がありません');
+      return;
+    }
+    
+    // データを集計
+    let totalHealthInsurance = 0;
+    let totalWelfarePension = 0;
+    let totalNursingInsurance = 0;
+    let totalPersonalBurden = 0;
+    let totalCompanyBurden = 0;
+    
+    employees.forEach(emp => {
+      totalHealthInsurance += this.getHealthInsurance(emp, false);
+      totalWelfarePension += this.getWelfarePension(emp, false);
+      totalNursingInsurance += this.getNursingInsurance(emp, false);
+      totalPersonalBurden += this.getPersonalBurden(emp, false);
+      totalCompanyBurden += this.getCompanyBurden(emp, false);
+    });
+    
+    const totalAmount = totalHealthInsurance + totalWelfarePension + totalNursingInsurance;
+    
+    // 期間の文字列を生成
+    let periodText = '';
+    if (this.documentPeriodType === 'month') {
+      periodText = this.documentSelectedMonth;
+    } else {
+      periodText = `${this.documentSelectedYear}年`;
+    }
+    
+    // HTML要素を作成
+    const content = document.createElement('div');
+    content.style.position = 'absolute';
+    content.style.left = '-9999px';
+    content.style.width = '210mm';
+    content.style.padding = '25mm';
+    content.style.fontFamily = '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif';
+    content.style.fontSize = '12px';
+    content.style.color = '#333';
+    content.style.backgroundColor = '#fff';
+    content.style.lineHeight = '1.6';
+    
+    content.innerHTML = `
+      <div style="text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #000;">
+        <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 10px 0; color: #000; letter-spacing: 2px;">${periodText}　社会保険料控除額一覧</h1>
+        <p style="font-size: 12px; color: #666; margin: 0;">作成日：${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      </div>
+      
+      <div style="margin-bottom: 30px;">
+        <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 15px 0; color: #000; padding: 10px; background-color: #f5f5f5; border-left: 5px solid #000;">保険料内訳</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; width: 40%; color: #000; font-size: 16px;">項目</td>
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; text-align: right; color: #000; font-size: 16px;">金額</td>
+          </tr>
+          <tr>
+            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">健康保険料</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${totalHealthInsurance.toLocaleString()}円</td>
+          </tr>
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-size: 16px;">厚生年金保険料</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; font-size: 16px;">${totalWelfarePension.toLocaleString()}円</td>
+          </tr>
+          <tr>
+            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">介護保険料</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${totalNursingInsurance.toLocaleString()}円</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="margin-bottom: 30px;">
+        <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 15px 0; color: #000; padding: 10px; background-color: #f5f5f5; border-left: 5px solid #000;">負担額内訳</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; width: 40%; color: #000; font-size: 16px;">項目</td>
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; text-align: right; color: #000; font-size: 16px;">金額</td>
+          </tr>
+          <tr>
+            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">社員負担額</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${totalPersonalBurden.toLocaleString()}円</td>
+          </tr>
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-size: 16px;">会社負担額</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; font-size: 16px;">${totalCompanyBurden.toLocaleString()}円</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="margin-top: 40px; padding: 25px; border: 2px solid #000; border-radius: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #000;">合計額</span>
+          <span style="font-size: 24px; font-weight: bold; color: #000;">${totalAmount.toLocaleString()}円</span>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(content);
+    
+    // HTMLを画像に変換してPDFに追加
+    html2canvas(content, {
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: content.scrollWidth,
+      windowHeight: content.scrollHeight
+    } as any).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      // ファイル名を生成
+      const fileName = `${periodText}_社会保険料控除額一覧.pdf`.replace(/\s+/g, '_');
+      
+      // PDFをダウンロード
+      pdf.save(fileName);
+      
+      // 一時要素を削除
+      document.body.removeChild(content);
+    }).catch(error => {
+      console.error('PDF生成エラー:', error);
+      alert('PDFの生成に失敗しました');
+      document.body.removeChild(content);
+    });
   }
 
   // CSV出力機能

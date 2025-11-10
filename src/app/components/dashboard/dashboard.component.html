@@ -541,6 +541,53 @@
               </button>
             </div>
           </div>
+          
+          <!-- 期間選択（社会保険料控除一覧表の場合のみ表示） -->
+          <div *ngIf="selectedDocumentType === 'document1'" class="control-group">
+            <label class="control-label">期間:</label>
+            <div class="mode-selector">
+              <button 
+                type="button"
+                class="mode-button"
+                [class.active]="documentPeriodType === 'month'"
+                (click)="documentPeriodType = 'month'">
+                月単位
+              </button>
+              <button 
+                type="button"
+                class="mode-button"
+                [class.active]="documentPeriodType === 'year'"
+                (click)="documentPeriodType = 'year'">
+                年単位
+              </button>
+            </div>
+            <select 
+              *ngIf="documentPeriodType === 'month'"
+              class="control-select"
+              [(ngModel)]="documentSelectedMonth">
+              <option *ngFor="let month of documentAvailableMonths" [value]="month">
+                {{ month }}
+              </option>
+            </select>
+            <select 
+              *ngIf="documentPeriodType === 'year'"
+              class="control-select"
+              [(ngModel)]="documentSelectedYear">
+              <option *ngFor="let year of documentAvailableYears" [value]="year">
+                {{ year }}年
+              </option>
+            </select>
+          </div>
+          
+          <!-- 作成ボタン -->
+          <div class="control-group">
+            <button 
+              type="button"
+              class="create-document-button"
+              (click)="createDocument()">
+              作成
+            </button>
+          </div>
         </div>
         
         <!-- 一括作成フィルター -->
@@ -647,24 +694,6 @@
               </div>
             </div>
           </div>
-          
-          <!-- プレビューエリア（後で書類フォーマットを追加） -->
-          <div class="document-preview">
-            <h3 class="section-title">プレビュー</h3>
-            <div class="preview-placeholder">
-              <p>書類フォーマットは後で実装します</p>
-              <p *ngIf="bulkFilterType === 'all'">対象: 全社員</p>
-              <p *ngIf="bulkFilterType === 'department' && bulkFilterDepartment">
-                対象: {{ bulkFilterDepartment }}部署
-              </p>
-              <p *ngIf="bulkFilterType === 'nursing'">
-                対象: 介護保険{{ bulkFilterNursingInsurance === 'with' ? '有' : bulkFilterNursingInsurance === 'without' ? '無' : 'すべて' }}
-              </p>
-              <p *ngIf="bulkFilterType === 'custom'">
-                対象: {{ bulkSelectedEmployees.length }}名
-              </p>
-            </div>
-          </div>
         </div>
         
         <!-- 個別作成 -->
@@ -692,15 +721,6 @@
             
             <div *ngIf="individualSearchTerm && individualSearchResults.length === 0" class="no-results">
               <p>該当する社員が見つかりませんでした</p>
-            </div>
-          </div>
-          
-          <!-- プレビューエリア（後で書類フォーマットを追加） -->
-          <div *ngIf="individualSelectedEmployee" class="document-preview">
-            <h3 class="section-title">プレビュー</h3>
-            <div class="preview-placeholder">
-              <p>書類フォーマットは後で実装します</p>
-              <p>対象: {{ getEmployeeId(individualSelectedEmployee) }} - {{ getEmployeeName(individualSelectedEmployee) }}</p>
             </div>
           </div>
         </div>

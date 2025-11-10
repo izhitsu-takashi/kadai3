@@ -1334,6 +1334,28 @@
   border-color: #667eea;
 }
 
+.create-document-button {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  margin-top: 1.5rem;
+}
+
+.create-document-button:hover {
+  background: #38a169;
+}
+
+.create-document-button:active {
+  transform: scale(0.98);
+}
+
 .bulk-creation-container,
 .individual-creation-container {
   display: flex;
