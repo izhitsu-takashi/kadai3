@@ -56,7 +56,7 @@
               <select 
                 id="month-select" 
                 class="filter-select"
-                [value]="selectedMonth"
+                [(ngModel)]="selectedMonth"
                 (change)="onMonthChange($any($event.target).value)">
                 <option *ngFor="let month of (tableType === 'salary' ? availableMonths : availableBonusMonths)" [value]="month">
                   {{ month }}

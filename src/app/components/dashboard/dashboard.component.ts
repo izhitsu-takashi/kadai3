@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -239,7 +239,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private employeeService: EmployeeService,
     private firestoreService: FirestoreService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -403,6 +404,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       this.loadBonuses();
     }
+    
+    // 変更検知を明示的にトリガーして、select要素の表示を更新
+    this.cdr.detectChanges();
   }
 
   loadAvailableMonths(): void {
@@ -783,8 +787,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // 保険料一覧ページに切り替えた場合は、現在の年月を設定
       if (menuId === 'insurance-list') {
-        // 利用可能な月のデータが読み込まれていることを確認してから設定
-        this.setCurrentMonthAfterDataLoad();
+        // ページの読み込みが完全に終了した後に現在の年月を設定
+        // 変更検知サイクルが完了した後に実行するため、setTimeoutを2回使用
+        setTimeout(() => {
+          setTimeout(() => {
+            this.setCurrentMonthIfAvailable();
+          }, 0);
+        }, 0);
       }
     }
   }
@@ -842,8 +851,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // 保険料一覧ページに切り替えた場合は、現在の年月を設定
       if (stepData.menuId === 'insurance-list') {
-        // 利用可能な月のデータが読み込まれていることを確認してから設定
-        this.setCurrentMonthAfterDataLoad();
+        // ページの読み込みが完全に終了した後に現在の年月を設定
+        // 変更検知サイクルが完了した後に実行するため、setTimeoutを2回使用
+        setTimeout(() => {
+          setTimeout(() => {
+            this.setCurrentMonthIfAvailable();
+          }, 0);
+        }, 0);
       }
     }
   }
