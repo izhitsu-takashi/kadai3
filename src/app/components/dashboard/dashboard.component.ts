@@ -137,6 +137,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   sortedBonuses: Bonus[] = [];
   isLoading = false;
   private allEmployeesData: Employee[] = []; // 全期間の給与データを保持
+  private allBonusesData: Bonus[] = []; // 全期間の賞与データを保持
   private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ
   
   // 給与/賞与の切り替え
@@ -344,6 +345,81 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
+   * 現在の年を "YYYY" 形式で取得
+   */
+  private getCurrentYear(): string {
+    const now = new Date();
+    return String(now.getFullYear());
+  }
+
+  /**
+   * 保険料レポートページで現在の年月を設定
+   */
+  private setCurrentMonthForReport(): void {
+    if (this.selectedMenuId !== 'reports') {
+      return; // レポートページでない場合は何もしない
+    }
+
+    const currentMonth = this.getCurrentMonth();
+    const currentYear = this.getCurrentYear();
+
+    // 月フィルターの場合
+    if (this.reportFilterType === 'month') {
+      const availableMonths = this.reportTableType === 'salary' ? this.availableMonths : this.availableBonusMonths;
+      
+      if (availableMonths.length === 0) {
+        return;
+      }
+
+      // 利用可能な月のリストに現在の年月が含まれているか確認
+      if (availableMonths.includes(currentMonth)) {
+        this.reportSelectedMonth = currentMonth;
+      } else {
+        // 現在の年月が利用可能でない場合、現在の年月の直近の月（現在の年月以前で最も近い月）を探す
+        const currentMonthNum = this.monthToNumber(currentMonth);
+        let nearestMonth: string | null = null;
+        let nearestMonthNum = 0;
+
+        for (const month of availableMonths) {
+          const monthNum = this.monthToNumber(month);
+          // 現在の年月以前で、最も近い月を探す
+          if (monthNum <= currentMonthNum && monthNum > nearestMonthNum) {
+            nearestMonth = month;
+            nearestMonthNum = monthNum;
+          }
+        }
+
+        // 直近の月が見つかった場合はそれを設定、見つからない場合は最新の月を設定
+        if (nearestMonth) {
+          this.reportSelectedMonth = nearestMonth;
+        } else {
+          // 現在の年月より前の月がない場合は、最新の月を設定
+          this.reportSelectedMonth = availableMonths[availableMonths.length - 1];
+        }
+      }
+    }
+    // 年フィルターの場合
+    else if (this.reportFilterType === 'year') {
+      const availableYears = this.reportTableType === 'salary' ? this.availableYears : this.availableBonusYears;
+      
+      if (availableYears.length === 0) {
+        return;
+      }
+
+      // 利用可能な年のリストに現在の年が含まれているか確認
+      if (availableYears.includes(currentYear)) {
+        this.reportSelectedYear = currentYear;
+      } else {
+        // 現在の年が利用可能でない場合、最新の年を設定
+        this.reportSelectedYear = availableYears[availableYears.length - 1];
+      }
+    }
+
+    // レポートの合計を再計算
+    this.calculateReportTotals();
+  }
+
+  /**
    * 月の文字列を数値に変換（例: "2025年04月" -> 202504）
    */
   private monthToNumber(month: string): number {
@@ -471,6 +547,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // すべての賞与データを読み込んで利用可能な月のリストを取得
     this.employeeService.getBonuses().subscribe({
       next: (data) => {
+        // 全期間の賞与データを保持（健康保険料の年間累計計算に使用）
+        this.allBonusesData = data;
         const monthsSet = new Set<string>();
         data.forEach(bonus => {
           const month = bonus.月 || bonus['month'];
@@ -803,9 +881,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // レポートページに切り替えた場合はチャートを更新
       if (menuId === 'reports') {
+        // ページの読み込みが完全に終了した後に現在の年月を設定
         setTimeout(() => {
+          this.setCurrentMonthForReport();
           this.updateCharts();
-        }, 100);
+        }, 0);
       }
       
       // 保険料一覧ページに切り替えた場合は、現在の年月を設定
@@ -1076,7 +1156,22 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getStandardBonus(employee: Employee | Bonus): number {
-    return (employee as any).標準賞与額 ?? (employee as any)['standardBonus'] ?? 0;
+    // 既に標準賞与額が設定されている場合はそれを返す
+    if ((employee as any).標準賞与額 || (employee as any)['standardBonus']) {
+      return (employee as any).標準賞与額 ?? (employee as any)['standardBonus'] ?? 0;
+    }
+
+    // 賞与テーブルの場合のみ計算
+    if (this.tableType !== 'bonus') {
+      return 0;
+    }
+
+    // 賞与を取得
+    const bonus = this.getBonus(employee);
+
+    // 標準賞与額は、賞与の1000円未満を切り捨てた額
+    // 例: 1234567円 → 1234000円（1000円未満を切り捨て）
+    return Math.floor(bonus / 1000) * 1000;
   }
 
   getSalary(employee: Employee | Bonus): number {
@@ -1183,27 +1278,39 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
-    const baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
+    let baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
     
-    // 賞与の場合、標準賞与額が573万円以上の場合は573万円を上限とする
-    if (isBonus && baseAmount >= 5730000) {
-      const cappedAmount = 5730000;
-      
-      // 組合保険が選択されている場合、設定された保険料率を使用して計算
-      if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
-        return Math.round(cappedAmount * (this.insuranceRate / 100));
-      }
-      
-      // 協会けんぽが選択されている場合、都道府県に基づいた保険料率を使用して計算
-      if (this.healthInsuranceType === 'kyokai' && this.prefecture) {
-        const kenpoRate = this.kenpoRates[this.prefecture];
-        if (kenpoRate && kenpoRate.healthRate > 0) {
-          return Math.round(cappedAmount * (kenpoRate.healthRate / 100));
+    // 賞与の場合、年間の課税される対象の標準賞与額を573万円に制限
+    if (isBonus) {
+      const currentMonth = employee.月 || employee.month;
+      if (currentMonth) {
+        // その年の標準賞与額の累計を計算（現在の賞与を除く）
+        const year = this.getYearFromMonth(currentMonth);
+        const employeeId = this.getEmployeeId(employee);
+        const yearTotal = this.calculateYearlyBonusTotal(employeeId, year, employee);
+        
+        // 年間の上限は573万円
+        const maxYearlyTotal = 5730000;
+        
+        // 累計が上限を超える場合、現在の賞与から使える分だけを計算
+        if (yearTotal >= maxYearlyTotal) {
+          // 既に上限に達している場合、健康保険料は0
+          baseAmount = 0;
+        } else {
+          // 累計 + 現在の標準賞与額が上限を超える場合、超過分を差し引く
+          const remaining = maxYearlyTotal - yearTotal;
+          if (baseAmount > remaining) {
+            baseAmount = remaining;
+          }
         }
       }
     }
     
-    // 通常の計算（給与、または賞与で上限未満の場合）
+    // 基準額が0の場合は健康保険料も0
+    if (baseAmount === 0) {
+      return 0;
+    }
+    
     // 組合保険が選択されている場合、設定された保険料率を使用して計算
     if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
       // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
@@ -1221,6 +1328,54 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 設定がない場合は既存のデータを使用
     return employee.健康保険料 ?? employee.healthInsurance ?? 0;
+  }
+
+  /**
+   * 月の文字列から年を取得（例: "2024年04月" -> "2024"）
+   */
+  private getYearFromMonth(month: string): string {
+    const match = month.match(/^(\d{4})年/);
+    return match ? match[1] : '';
+  }
+
+  /**
+   * 指定年の標準賞与額の累計を計算（現在の賞与より前の月のみ）
+   */
+  private calculateYearlyBonusTotal(employeeId: number | string, year: string, currentBonus: Employee | Bonus): number {
+    if (!year || this.allBonusesData.length === 0) {
+      return 0;
+    }
+
+    // 現在の賞与のIDと月を取得
+    const currentBonusId = this.getEmployeeId(currentBonus);
+    const currentBonusMonth = currentBonus.月 || currentBonus['month'];
+    if (!currentBonusMonth) {
+      return 0;
+    }
+
+    // 現在の月を数値に変換（例: "2024年06月" -> 202406）
+    const currentMonthNum = this.monthToNumber(currentBonusMonth);
+
+    // 該当社員の指定年の賞与データを取得（現在の月より前の月のみ）
+    const yearBonuses = this.allBonusesData.filter(bonus => {
+      const id = this.getEmployeeId(bonus);
+      const bonusMonth = bonus.月 || bonus['month'];
+      if (!bonusMonth) return false;
+      
+      const bonusYear = this.getYearFromMonth(bonusMonth);
+      const bonusMonthNum = this.monthToNumber(bonusMonth);
+      
+      // 同じ社員ID、同じ年、かつ現在の月より前の月の賞与のみ
+      return id === employeeId && bonusYear === year && bonusMonthNum < currentMonthNum;
+    });
+
+    // 標準賞与額の累計を計算
+    let total = 0;
+    for (const bonus of yearBonuses) {
+      total += this.getStandardBonus(bonus);
+    }
+
+    return total;
   }
 
   getWelfarePension(employee: Employee | Bonus, isBonus: boolean = false): number {
@@ -1469,14 +1624,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.availableYears = Array.from(yearsSet).sort();
         
-        // デフォルトで最初の月を選択
-        if (this.availableMonths.length > 0 && !this.reportSelectedMonth) {
-          this.reportSelectedMonth = this.availableMonths[0];
-        }
-        
-        // デフォルトで最初の年を選択
-        if (this.availableYears.length > 0 && !this.reportSelectedYear) {
-          this.reportSelectedYear = this.availableYears[0];
+        // デフォルトで現在の年月を設定（レポートページが表示されている場合のみ）
+        if (this.selectedMenuId === 'reports') {
+          setTimeout(() => {
+            this.setCurrentMonthForReport();
+          }, 0);
+        } else {
+          // レポートページでない場合は、最初の月/年を選択
+          if (this.availableMonths.length > 0 && !this.reportSelectedMonth) {
+            this.reportSelectedMonth = this.availableMonths[0];
+          }
+          
+          if (this.availableYears.length > 0 && !this.reportSelectedYear) {
+            this.reportSelectedYear = this.availableYears[0];
+          }
         }
         
         if (this.reportTableType === 'salary') {
@@ -1507,9 +1668,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.availableBonusYears = Array.from(yearsSet).sort();
         
-        // デフォルトで最初の年を選択
-        if (this.availableBonusYears.length > 0 && !this.reportSelectedYear && this.reportTableType === 'bonus') {
-          this.reportSelectedYear = this.availableBonusYears[0];
+        // デフォルトで現在の年月を設定（レポートページが表示されている場合のみ）
+        if (this.selectedMenuId === 'reports' && this.reportTableType === 'bonus') {
+          setTimeout(() => {
+            this.setCurrentMonthForReport();
+          }, 0);
+        } else {
+          // レポートページでない場合は、最初の年を選択
+          if (this.availableBonusYears.length > 0 && !this.reportSelectedYear && this.reportTableType === 'bonus') {
+            this.reportSelectedYear = this.availableBonusYears[0];
+          }
         }
         
         if (this.reportTableType === 'bonus') {
@@ -3553,3 +3721,4 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 }
+
