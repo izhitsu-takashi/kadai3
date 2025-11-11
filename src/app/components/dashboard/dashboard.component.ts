@@ -106,6 +106,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   isCompanyInfoSaved: boolean = false;
   isCompanyInfoEditing: boolean = true;
+  isCompanyInfoLoaded: boolean = false; // 企業情報の読み込み完了フラグ
 
   // 健康保険設定用
   healthInsuranceType: 'kyokai' | 'kumiai' = 'kyokai';
@@ -118,6 +119,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   healthInsuranceReductionError: string = ''; // エラーメッセージ
   isHealthInsuranceSaved: boolean = false;
   isHealthInsuranceEditing: boolean = true;
+  isHealthInsuranceLoaded: boolean = false; // 健康保険設定の読み込み完了フラグ
   
   // 協会けんぽの都道府県別保険料率
   kenpoRates: { [key: string]: { healthRate: number; careRate: number } } = {};
@@ -269,8 +271,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // レポート用のデータも読み込む
     this.loadReportData();
     // 保存された設定情報を読み込む
-    this.loadCompanyInfo();
-    this.loadHealthInsuranceSettings();
+    Promise.all([
+      this.loadCompanyInfo(),
+      this.loadHealthInsuranceSettings()
+    ]).then(() => {
+      // 両方の設定データの読み込みが完了した後に、一度だけ初期設定チェックを実行
+      this.checkInitialSetup();
+    });
     // 協会けんぽの都道府県別保険料率を読み込む
     this.loadKenpoRates();
     // 保険料率設定を読み込む
@@ -680,7 +687,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return column ? column.sortable : false;
   }
 
-  selectMenu(menuId: string): void {
+  async selectMenu(menuId: string): Promise<void> {
+    // 設定ページから移動する際に自動保存
+    if (this.selectedMenuId === 'company-settings') {
+      await this.autoSaveCompanyInfo();
+    } else if (this.selectedMenuId === 'health-insurance-settings') {
+      await this.autoSaveHealthInsurance();
+    }
+    
     if (menuId === 'settings') {
       // 設定ボタンをクリックした場合は、展開/折りたたみを切り替え
       this.isSettingsExpanded = !this.isSettingsExpanded;
@@ -699,7 +713,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  selectSettingsSubMenu(subMenuId: string): void {
+  async selectSettingsSubMenu(subMenuId: string): Promise<void> {
+    // 設定ページから移動する際に自動保存
+    if (this.selectedMenuId === 'company-settings') {
+      await this.autoSaveCompanyInfo();
+    } else if (this.selectedMenuId === 'health-insurance-settings') {
+      await this.autoSaveHealthInsurance();
+    }
+    
     // チュートリアルをクリックした場合
     if (subMenuId === 'tutorial') {
       this.startTutorial();
@@ -1786,6 +1807,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   async loadCompanyInfo(): Promise<void> {
     const db = this.firestoreService.getFirestore();
     if (!db) {
+      this.isCompanyInfoLoaded = true;
       return;
     }
 
@@ -1810,6 +1832,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error loading company info:', error);
+    } finally {
+      this.isCompanyInfoLoaded = true;
     }
   }
 
@@ -1834,6 +1858,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 保存完了の状態に変更
       this.isCompanyInfoSaved = true;
       this.isCompanyInfoEditing = false;
+      
+      // 初期設定チェックを実行
+      this.checkInitialSetup();
       
       // アラートで保存完了を通知
       alert('保存しました');
@@ -1932,6 +1959,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   async loadHealthInsuranceSettings(): Promise<void> {
     const db = this.firestoreService.getFirestore();
     if (!db) {
+      this.isHealthInsuranceLoaded = true;
       return;
     }
 
@@ -1976,6 +2004,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error loading health insurance settings:', error);
+    } finally {
+      this.isHealthInsuranceLoaded = true;
     }
   }
 
@@ -2063,6 +2093,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 保存完了の状態に変更
       this.isHealthInsuranceSaved = true;
       this.isHealthInsuranceEditing = false;
+      
+      // 初期設定チェックを実行
+      this.checkInitialSetup();
       
       // 組合保険または協会けんぽの場合、保険料率または引き下げ額が変更されたのでデータを再計算
       if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
@@ -3630,6 +3663,178 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         return '⚠️';
       default:
         return '📢';
+    }
+  }
+
+  // 初期設定が必要かチェック（内容が空白かどうかで判定）
+  needsInitialSetup(): boolean {
+    // 設定データの読み込みが完了していない場合は、falseを返す（黄色表示を防ぐ）
+    if (!this.isCompanyInfoLoaded || !this.isHealthInsuranceLoaded) {
+      return false;
+    }
+    
+    // 企業情報が空白かチェック
+    const isCompanyInfoEmpty = !this.companyInfo.companyName && 
+                                !this.companyInfo.address && 
+                                !this.companyInfo.corporateNumber && 
+                                !this.companyInfo.officeNumber;
+    
+    // 健康保険設定が空白かチェック
+    let isHealthInsuranceEmpty = false;
+    if (this.healthInsuranceType === 'kyokai') {
+      // 協会けんぽの場合、都道府県が選択されていない場合は空白
+      isHealthInsuranceEmpty = !this.prefecture;
+    } else if (this.healthInsuranceType === 'kumiai') {
+      // 組合保険の場合、保険料率が0または空白の場合は空白
+      isHealthInsuranceEmpty = !this.insuranceRate || this.insuranceRate === 0 || 
+                               !this.insuranceRateDisplay || this.insuranceRateDisplay.trim() === '';
+    }
+    
+    return isCompanyInfoEmpty || isHealthInsuranceEmpty;
+  }
+
+  // サブメニューが初期設定が必要かチェック（内容が空白かどうかで判定）
+  isSubMenuSetupRequired(subMenuId: string): boolean {
+    // 設定データの読み込みが完了していない場合は、falseを返す（黄色表示を防ぐ）
+    if (subMenuId === 'company-settings' && !this.isCompanyInfoLoaded) {
+      return false;
+    }
+    if (subMenuId === 'health-insurance-settings' && !this.isHealthInsuranceLoaded) {
+      return false;
+    }
+    
+    if (subMenuId === 'company-settings') {
+      // 企業情報が空白かチェック
+      return !this.companyInfo.companyName && 
+             !this.companyInfo.address && 
+             !this.companyInfo.corporateNumber && 
+             !this.companyInfo.officeNumber;
+    }
+    if (subMenuId === 'health-insurance-settings') {
+      // 健康保険設定が空白かチェック
+      if (this.healthInsuranceType === 'kyokai') {
+        // 協会けんぽの場合、都道府県が選択されていない場合は空白
+        return !this.prefecture;
+      } else if (this.healthInsuranceType === 'kumiai') {
+        // 組合保険の場合、保険料率が0または空白の場合は空白
+        return !this.insuranceRate || this.insuranceRate === 0 || 
+               !this.insuranceRateDisplay || this.insuranceRateDisplay.trim() === '';
+      }
+    }
+    return false;
+  }
+
+  // 初期設定チェックとお知らせ追加
+  checkInitialSetup(): void {
+    // 既存の初期設定お知らせを削除
+    this.notifications = this.notifications.filter(n => n.type !== 'setup-required');
+    
+    // 初期設定が必要な場合、お知らせを追加
+    if (this.needsInitialSetup()) {
+      this.addNotification('初期設定を完了してください', 'setup-required');
+    }
+  }
+
+  // 企業情報を自動保存
+  async autoSaveCompanyInfo(): Promise<void> {
+    // 編集モードでない場合は保存しない
+    if (!this.isCompanyInfoEditing) {
+      return;
+    }
+    
+    // すべてのフィールドが空白の場合は保存しない
+    if (!this.companyInfo.companyName && 
+        !this.companyInfo.address && 
+        !this.companyInfo.corporateNumber && 
+        !this.companyInfo.officeNumber) {
+      return;
+    }
+    
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      const docRef = doc(db, 'companyInfo', 'settings');
+      await setDoc(docRef, {
+        companyName: this.companyInfo.companyName,
+        address: this.companyInfo.address,
+        corporateNumber: this.companyInfo.corporateNumber,
+        officeNumber: this.companyInfo.officeNumber,
+        updatedAt: new Date()
+      }, { merge: true });
+
+      // 保存完了の状態に変更
+      this.isCompanyInfoSaved = true;
+      this.isCompanyInfoEditing = false;
+      
+      // 初期設定チェックを実行
+      this.checkInitialSetup();
+    } catch (error) {
+      console.error('Error auto-saving company info:', error);
+    }
+  }
+
+  // 健康保険設定を自動保存
+  async autoSaveHealthInsurance(): Promise<void> {
+    // 編集モードでない場合は保存しない
+    if (!this.isHealthInsuranceEditing) {
+      return;
+    }
+    
+    // バリデーション
+    if (this.healthInsuranceType === 'kumiai') {
+      // 組合保険の場合、保険料率が空白または0の場合は保存しない
+      if (!this.insuranceRate || this.insuranceRate === 0 || 
+          !this.insuranceRateDisplay || this.insuranceRateDisplay.trim() === '') {
+        return;
+      }
+    } else if (this.healthInsuranceType === 'kyokai') {
+      // 協会けんぽの場合、都道府県が選択されていない場合は保存しない
+      if (!this.prefecture) {
+        return;
+      }
+    }
+    
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      // Firestoreに保存
+      const docRef = doc(db, 'healthInsuranceSettings', 'settings');
+      await setDoc(docRef, {
+        type: this.healthInsuranceType,
+        prefecture: this.prefecture,
+        insuranceRate: this.insuranceRate,
+        healthInsuranceReduction: this.healthInsuranceReduction,
+        updatedAt: new Date()
+      }, { merge: true });
+
+      // 前の値を更新
+      this.previousHealthInsuranceType = this.healthInsuranceType;
+      this.previousPrefecture = this.prefecture;
+      this.previousHealthInsuranceRate = this.insuranceRate;
+
+      // 保存完了の状態に変更
+      this.isHealthInsuranceSaved = true;
+      this.isHealthInsuranceEditing = false;
+      
+      // 初期設定チェックを実行
+      this.checkInitialSetup();
+      
+      // 組合保険または協会けんぽの場合、保険料率または引き下げ額が変更されたのでデータを再計算
+      if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
+          (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
+        // テーブルデータを再読み込み（表示を更新）
+        this.loadEmployees();
+        // レポートデータも再計算
+        this.loadReportData();
+      }
+    } catch (error) {
+      console.error('Error auto-saving health insurance settings:', error);
     }
   }
 }

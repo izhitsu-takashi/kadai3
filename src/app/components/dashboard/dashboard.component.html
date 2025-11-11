@@ -38,6 +38,7 @@
               *ngFor="let subMenu of settingsSubMenus" 
               class="submenu-item" 
               [class.active]="isSettingsSubMenuSelected(subMenu.id)"
+              [class.setup-required]="isSubMenuSetupRequired(subMenu.id)"
               type="button"
               (click)="selectSettingsSubMenu(subMenu.id)">
               {{ subMenu.label }}

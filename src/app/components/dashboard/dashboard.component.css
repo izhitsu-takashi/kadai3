@@ -162,6 +162,27 @@
   color: white;
 }
 
+.menu-item.setup-required {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.menu-item.setup-required:hover {
+  background: #fde68a;
+  color: #78350f;
+}
+
+.menu-item.setup-required.active {
+  background: #f59e0b;
+  color: white;
+}
+
+.menu-item.setup-required.active:hover {
+  background: #d97706;
+  color: white;
+}
+
 .menu-item:first-child {
   border-top: none;
 }
@@ -206,6 +227,27 @@
 
 .submenu-item.active:hover {
   background: #5568d3;
+  color: white;
+}
+
+.submenu-item.setup-required {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.submenu-item.setup-required:hover {
+  background: #fde68a;
+  color: #78350f;
+}
+
+.submenu-item.setup-required.active {
+  background: #f59e0b;
+  color: white;
+}
+
+.submenu-item.setup-required.active:hover {
+  background: #d97706;
   color: white;
 }
 
