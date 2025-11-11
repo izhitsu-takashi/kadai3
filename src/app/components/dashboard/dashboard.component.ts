@@ -146,6 +146,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   availableMonths: string[] = [];
   availableBonusMonths: string[] = [];
   selectedMonth: string = '';
+  private monthsLoadCounter: number = 0; // 月データの読み込み完了を追跡
 
   // フィルター用
   filterDepartment: string = '';
@@ -242,6 +243,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // 月データの読み込みカウンターをリセット
+    this.monthsLoadCounter = 0;
     // まずすべてのデータを読み込んで利用可能な月のリストを取得
     this.loadAvailableMonths();
     this.loadAvailableBonusMonths();
@@ -308,6 +311,100 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * 現在の年月を "YYYY年MM月" 形式で取得
+   */
+  private getCurrentMonth(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}年${month}月`;
+  }
+
+  /**
+   * 月の文字列を数値に変換（例: "2025年04月" -> 202504）
+   */
+  private monthToNumber(month: string): number {
+    const match = month.match(/^(\d{4})年(\d{1,2})月/);
+    if (!match) return 0;
+    return parseInt(match[1] + match[2].padStart(2, '0'), 10);
+  }
+
+  /**
+   * 利用可能な月のデータが読み込まれていることを確認してから、現在の年月を設定
+   * 保険料一覧ページに切り替えたときに呼び出す
+   */
+  private setCurrentMonthAfterDataLoad(): void {
+    // 利用可能な月のデータが読み込まれているか確認
+    const availableMonths = this.tableType === 'salary' ? this.availableMonths : this.availableBonusMonths;
+    
+    if (availableMonths.length > 0) {
+      // データが読み込まれている場合は即座に設定
+      this.setCurrentMonthIfAvailable();
+    } else {
+      // データがまだ読み込まれていない場合は、読み込み完了を待つ
+      // ページの読み込みが完全に終了したタイミングで設定
+      setTimeout(() => {
+        this.setCurrentMonthIfAvailable();
+      }, 0);
+    }
+  }
+
+  /**
+   * 利用可能な月のリストに現在の年月が含まれていれば設定
+   * 賞与テーブルの場合は、現在の年月の直近の月を探す
+   * ページの読み込みが完全に終了したタイミングで呼び出す
+   */
+  private setCurrentMonthIfAvailable(): void {
+    if (this.selectedMenuId !== 'insurance-list') {
+      return; // 保険料一覧ページでない場合は何もしない
+    }
+
+    const currentMonth = this.getCurrentMonth();
+    const availableMonths = this.tableType === 'salary' ? this.availableMonths : this.availableBonusMonths;
+    
+    if (availableMonths.length === 0) {
+      return; // 利用可能な月がない場合は何もしない
+    }
+
+    // 利用可能な月のリストに現在の年月が含まれているか確認
+    if (availableMonths.includes(currentMonth)) {
+      this.selectedMonth = currentMonth;
+    } else if (this.tableType === 'bonus') {
+      // 賞与テーブルの場合、現在の年月の直近の月（現在の年月以前で最も近い月）を探す
+      const currentMonthNum = this.monthToNumber(currentMonth);
+      let nearestMonth: string | null = null;
+      let nearestMonthNum = 0;
+
+      for (const month of availableMonths) {
+        const monthNum = this.monthToNumber(month);
+        // 現在の年月以前で、最も近い月を探す
+        if (monthNum <= currentMonthNum && monthNum > nearestMonthNum) {
+          nearestMonth = month;
+          nearestMonthNum = monthNum;
+        }
+      }
+
+      // 直近の月が見つかった場合はそれを設定、見つからない場合は最新の月を設定
+      if (nearestMonth) {
+        this.selectedMonth = nearestMonth;
+      } else {
+        // 現在の年月より前の月がない場合は、最新の月を設定
+        this.selectedMonth = availableMonths[availableMonths.length - 1];
+      }
+    } else {
+      // 給与テーブルの場合、現在の年月が利用可能でない場合は最初の月を選択
+      this.selectedMonth = availableMonths[0];
+    }
+
+    // 選択された月のデータを読み込む
+    if (this.tableType === 'salary') {
+      this.loadEmployees();
+    } else {
+      this.loadBonuses();
+    }
+  }
+
   loadAvailableMonths(): void {
     // すべてのデータを読み込んで利用可能な月のリストを取得
     this.employeeService.getEmployees().subscribe({
@@ -321,15 +418,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.availableMonths = Array.from(monthsSet).sort();
         
-        // デフォルトで最初の月を選択（必ず月を選択する）
-        if (this.availableMonths.length > 0 && !this.selectedMonth) {
-          this.selectedMonth = this.availableMonths[0];
-          // 選択された月のデータを読み込む
-          this.loadEmployees();
+        // 月データの読み込み完了をカウント
+        this.monthsLoadCounter++;
+        // 両方の月データの読み込みが完了したら、現在の年月を設定
+        if (this.monthsLoadCounter === 2) {
+          // ページの読み込みが完全に終了したタイミングで現在の年月を設定
+          setTimeout(() => {
+            this.setCurrentMonthIfAvailable();
+          }, 0);
         }
       },
       error: (error) => {
         console.error('Error loading available months:', error);
+        this.monthsLoadCounter++;
+        if (this.monthsLoadCounter === 2) {
+          setTimeout(() => {
+            this.setCurrentMonthIfAvailable();
+          }, 0);
+        }
       }
     });
   }
@@ -346,9 +452,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         });
         this.availableBonusMonths = Array.from(monthsSet).sort();
+        
+        // 月データの読み込み完了をカウント
+        this.monthsLoadCounter++;
+        // 両方の月データの読み込みが完了したら、現在の年月を設定
+        if (this.monthsLoadCounter === 2) {
+          // ページの読み込みが完全に終了したタイミングで現在の年月を設定
+          setTimeout(() => {
+            this.setCurrentMonthIfAvailable();
+          }, 0);
+        }
       },
       error: (error) => {
         console.error('Error loading available bonus months:', error);
+        this.monthsLoadCounter++;
+        if (this.monthsLoadCounter === 2) {
+          setTimeout(() => {
+            this.setCurrentMonthIfAvailable();
+          }, 0);
+        }
       }
     });
   }
@@ -589,18 +711,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // フィルターをリセット
     this.filterDepartment = '';
     this.filterNursingInsurance = '';
-    // 月をリセット
-    if (type === 'salary') {
-      if (this.availableMonths.length > 0) {
-        this.selectedMonth = this.availableMonths[0];
-      }
-      this.loadEmployees();
-    } else {
-      if (this.availableBonusMonths.length > 0) {
-        this.selectedMonth = this.availableBonusMonths[0];
-      }
-      this.loadBonuses();
-    }
+    
+    // ページの読み込みが完全に終了したタイミングで現在の年月を設定
+    setTimeout(() => {
+      this.setCurrentMonthIfAvailable();
+    }, 0);
   }
 
   sortTable(columnKey: string): void {
@@ -665,6 +780,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.updateCharts();
         }, 100);
       }
+      
+      // 保険料一覧ページに切り替えた場合は、現在の年月を設定
+      if (menuId === 'insurance-list') {
+        // 利用可能な月のデータが読み込まれていることを確認してから設定
+        this.setCurrentMonthAfterDataLoad();
+      }
     }
   }
 
@@ -717,6 +838,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         setTimeout(() => {
           this.updateCharts();
         }, 100);
+      }
+      
+      // 保険料一覧ページに切り替えた場合は、現在の年月を設定
+      if (stepData.menuId === 'insurance-list') {
+        // 利用可能な月のデータが読み込まれていることを確認してから設定
+        this.setCurrentMonthAfterDataLoad();
       }
     }
   }
