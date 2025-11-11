@@ -27,7 +27,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedMenuId: string = 'insurance-list';
   menuItems = [
     { label: '保険料一覧', id: 'insurance-list' },
-    { label: '書類作成', id: 'documents' },
     { label: '保険料レポート', id: 'reports' },
     { label: '設定', id: 'settings' }
   ];
@@ -62,19 +61,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       description: '社員ごとの社会保険料を一覧表示するページです。賞与にも対応しており、部署ごとにフィルターの設定なども行えます。'
     },
     {
-      menuId: 'documents',
-      title: '書類作成ページ',
-      description: '社会保険料を管理できる書類を自動で作成します。作成した書類はPDFにてダウンロードが可能です。'
-    },
-    {
       menuId: 'reports',
       title: '保険料レポートページ',
-      description: '指定した期間の社会保険料の合計額を確認できます。給与、賞与に対応しており、社員と会社の負担額が別々に表示されています。'
+      description: '指定した期間の社会保険料の合計額を確認できます。給与、賞与に対応しており、社員と会社の負担額が別々に表示されています。PDF作成機能により、現在表示されているデータをPDFとしてダウンロードできます。'
     },
     {
       menuId: 'company-settings',
       title: '企業情報設定ページ',
-      description: '企業情報設定ページでは、会社の情報を入力して保存します。この情報は書類作成機能にて使用します。'
+      description: '企業情報設定ページでは、会社の情報を入力して保存します。この情報はPDF作成機能にて使用します。'
     },
     {
       menuId: 'health-insurance-settings',
@@ -165,8 +159,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // 書類作成用
   documentTypes = [
     { id: 'document1', label: '社会保険料控除一覧表' },
-    { id: 'document6', label: '給与明細書' },
-    { id: 'document7', label: '賞与明細書' },
   ];
   selectedDocumentType: string = '';
   documentCreationMode: 'bulk' | 'individual' = 'bulk';
@@ -178,14 +170,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   bulkSelectedEmployees: Employee[] = [];
   bulkAvailableEmployees: Employee[] = [];
   bulkSearchTerm: string = '';
-  
-  // 給与/賞与明細書用
-  payslipType: 'salary' | 'bonus' = 'salary';
-  payslipSelectedMonth: string = '';
-  payslipAvailableMonths: string[] = [];
-  payslipAvailableBonusMonths: string[] = [];
-  payslipFilteredEmployees: (Employee | Bonus)[] = [];
-  payslipAllEmployees: (Employee | Bonus)[] = []; // 全社員一覧（社員を追加フィルター用）
   
   // 個別作成用
   individualSearchTerm: string = '';
@@ -286,8 +270,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadDepartmentsForDocuments();
     // 書類作成用の期間リストを読み込む
     this.loadDocumentPeriods();
-    // 給与/賞与明細書用の月リストを読み込む
-    this.loadPayslipMonths();
   }
 
   loadDepartmentsForDocuments(): void {
@@ -1054,76 +1036,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedEmployee = null;
   }
 
-  // モーダルから明細書を作成
-  createPayslipFromModal(): void {
-    if (!this.selectedEmployee) {
-      alert('社員情報が選択されていません');
-      return;
-    }
-
-    if (!this.selectedMonth) {
-      alert('月が選択されていません');
-      return;
-    }
-
-    const isBonus = this.tableType === 'bonus';
-    const month = this.selectedMonth;
-
-    // 選択された社員のデータを取得
-    if (isBonus) {
-      this.employeeService.getBonuses(month).subscribe({
-        next: (allBonuses) => {
-          const empId = this.getEmployeeId(this.selectedEmployee!);
-          const filtered = allBonuses.filter(bonus => {
-            const bonusMonth = bonus.月 || bonus['month'];
-            const bonusEmpId = this.getEmployeeId(bonus);
-            return bonusMonth === month && bonusEmpId === empId;
-          });
-
-          if (filtered.length === 0) {
-            alert('該当するデータがありません');
-            return;
-          }
-
-          // 一時的にpayslipSelectedMonthを設定してPDF生成
-          const originalPayslipMonth = this.payslipSelectedMonth;
-          this.payslipSelectedMonth = month;
-          this.generatePayslipPDF(filtered as any, isBonus);
-          this.payslipSelectedMonth = originalPayslipMonth;
-        },
-        error: (error) => {
-          console.error('Error loading bonuses for payslip:', error);
-          alert('データの読み込みに失敗しました');
-        }
-      });
-    } else {
-      this.employeeService.getEmployees(month).subscribe({
-        next: (allEmployees) => {
-          const empId = this.getEmployeeId(this.selectedEmployee!);
-          const filtered = allEmployees.filter(emp => {
-            const empMonth = emp.月 || emp.month;
-            const employeeEmpId = this.getEmployeeId(emp);
-            return empMonth === month && employeeEmpId === empId;
-          });
-
-          if (filtered.length === 0) {
-            alert('該当するデータがありません');
-            return;
-          }
-
-          // 一時的にpayslipSelectedMonthを設定してPDF生成
-          const originalPayslipMonth = this.payslipSelectedMonth;
-          this.payslipSelectedMonth = month;
-          this.generatePayslipPDF(filtered, isBonus);
-          this.payslipSelectedMonth = originalPayslipMonth;
-        },
-        error: (error) => {
-          console.error('Error loading employees for payslip:', error);
-          alert('データの読み込みに失敗しました');
-        }
-      });
-    }
-  }
 
   getEmployeeField(employee: Employee | Bonus, field: string): any {
     // 日本語キーと英語キーの両方をチェック
@@ -2286,163 +2198,32 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     const searchTerm = this.bulkSearchTerm.toLowerCase().trim();
-    const isBonus = this.selectedDocumentType === 'document7';
     
-    // 給与/賞与明細書の場合は、選択された月のデータのみを検索
-    if (this.selectedDocumentType === 'document6' || this.selectedDocumentType === 'document7') {
-      if (!this.payslipSelectedMonth) {
-        this.bulkAvailableEmployees = [];
-        return;
-      }
-      
-      if (isBonus) {
-        this.employeeService.getBonuses().subscribe({
-          next: (data) => {
-            let filtered = data.filter(emp => {
-              const month = emp.月 || emp['month'];
-              return month === this.payslipSelectedMonth;
-            });
-            
-            filtered = filtered.filter(emp => {
-              const id = String(this.getEmployeeId(emp)).toLowerCase();
-              const name = this.getEmployeeName(emp).toLowerCase();
-              return id.includes(searchTerm) || name.includes(searchTerm);
-            });
-            
-            const uniqueEmployeesMap = new Map<string | number, Employee>();
-            filtered.forEach(emp => {
-              const empId = this.getEmployeeId(emp);
-              if (!uniqueEmployeesMap.has(empId)) {
-                uniqueEmployeesMap.set(empId, emp as any);
-              }
-            });
-            
-            this.bulkAvailableEmployees = Array.from(uniqueEmployeesMap.values())
-              .filter(emp => {
-                const empId = this.getEmployeeId(emp);
-                return !this.bulkSelectedEmployees.some(selected => 
-                  this.getEmployeeId(selected) === empId
-                );
-              })
-              .sort((a, b) => {
-                const idA = this.getEmployeeId(a);
-                const idB = this.getEmployeeId(b);
-                if (typeof idA === 'number' && typeof idB === 'number') {
-                  return idA - idB;
-                }
-                return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-              });
-          },
-          error: (error) => {
-            console.error('Error searching bonuses:', error);
-            this.bulkAvailableEmployees = [];
+    // 全データから検索
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        const filtered = data.filter(emp => {
+          const id = String(this.getEmployeeId(emp)).toLowerCase();
+          const name = this.getEmployeeName(emp).toLowerCase();
+          return id.includes(searchTerm) || name.includes(searchTerm);
+        });
+        
+        const uniqueEmployeesMap = new Map<string | number, Employee>();
+        filtered.forEach(emp => {
+          const empId = this.getEmployeeId(emp);
+          if (!uniqueEmployeesMap.has(empId)) {
+            uniqueEmployeesMap.set(empId, emp);
           }
         });
-      } else {
-        this.employeeService.getEmployees().subscribe({
-          next: (data) => {
-            let filtered = data.filter(emp => {
-              const month = emp.月 || emp.month;
-              return month === this.payslipSelectedMonth;
-            });
-            
-            filtered = filtered.filter(emp => {
-              const id = String(this.getEmployeeId(emp)).toLowerCase();
-              const name = this.getEmployeeName(emp).toLowerCase();
-              return id.includes(searchTerm) || name.includes(searchTerm);
-            });
-            
-            const uniqueEmployeesMap = new Map<string | number, Employee>();
-            filtered.forEach(emp => {
-              const empId = this.getEmployeeId(emp);
-              if (!uniqueEmployeesMap.has(empId)) {
-                uniqueEmployeesMap.set(empId, emp);
-              }
-            });
-            
-            this.bulkAvailableEmployees = Array.from(uniqueEmployeesMap.values())
-              .filter(emp => {
-                const empId = this.getEmployeeId(emp);
-                return !this.bulkSelectedEmployees.some(selected => 
-                  this.getEmployeeId(selected) === empId
-                );
-              })
-              .sort((a, b) => {
-                const idA = this.getEmployeeId(a);
-                const idB = this.getEmployeeId(b);
-                if (typeof idA === 'number' && typeof idB === 'number') {
-                  return idA - idB;
-                }
-                return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-              });
-          },
-          error: (error) => {
-            console.error('Error searching employees:', error);
-            this.bulkAvailableEmployees = [];
-          }
-        });
-      }
-    } else {
-      // その他の書類の場合は全データから検索
-      this.employeeService.getEmployees().subscribe({
-        next: (data) => {
-          const filtered = data.filter(emp => {
-            const id = String(this.getEmployeeId(emp)).toLowerCase();
-            const name = this.getEmployeeName(emp).toLowerCase();
-            return id.includes(searchTerm) || name.includes(searchTerm);
-          });
-          
-          const uniqueEmployeesMap = new Map<string | number, Employee>();
-          filtered.forEach(emp => {
+        
+        this.bulkAvailableEmployees = Array.from(uniqueEmployeesMap.values())
+          .filter(emp => {
             const empId = this.getEmployeeId(emp);
-            if (!uniqueEmployeesMap.has(empId)) {
-              uniqueEmployeesMap.set(empId, emp);
-            }
-          });
-          
-          this.bulkAvailableEmployees = Array.from(uniqueEmployeesMap.values())
-            .filter(emp => {
-              const empId = this.getEmployeeId(emp);
-              return !this.bulkSelectedEmployees.some(selected => 
-                this.getEmployeeId(selected) === empId
-              );
-            })
-            .sort((a, b) => {
-              const idA = this.getEmployeeId(a);
-              const idB = this.getEmployeeId(b);
-              if (typeof idA === 'number' && typeof idB === 'number') {
-                return idA - idB;
-              }
-              return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-            });
-        },
-        error: (error) => {
-          console.error('Error searching employees:', error);
-          this.bulkAvailableEmployees = [];
-        }
-      });
-    }
-  }
-
-  // 社員を追加フィルター用：全社員一覧を読み込む
-  loadPayslipAllEmployees(): void {
-    if (!this.payslipSelectedMonth) {
-      this.payslipAllEmployees = [];
-      return;
-    }
-
-    const isBonus = this.selectedDocumentType === 'document7';
-
-    if (isBonus) {
-      this.employeeService.getBonuses().subscribe({
-        next: (data) => {
-          let allEmployees = data.filter(emp => {
-            const month = emp.月 || emp['month'];
-            return month === this.payslipSelectedMonth;
-          });
-          
-          // 社員IDでソート
-          allEmployees = allEmployees.sort((a, b) => {
+            return !this.bulkSelectedEmployees.some(selected => 
+              this.getEmployeeId(selected) === empId
+            );
+          })
+          .sort((a, b) => {
             const idA = this.getEmployeeId(a);
             const idB = this.getEmployeeId(b);
             if (typeof idA === 'number' && typeof idB === 'number') {
@@ -2450,41 +2231,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             }
             return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
           });
-          
-          this.payslipAllEmployees = allEmployees as any;
-        },
-        error: (error) => {
-          console.error('Error loading all bonuses:', error);
-          this.payslipAllEmployees = [];
-        }
-      });
-    } else {
-      this.employeeService.getEmployees().subscribe({
-        next: (data) => {
-          let allEmployees = data.filter(emp => {
-            const month = emp.月 || emp.month;
-            return month === this.payslipSelectedMonth;
-          });
-          
-          // 社員IDでソート
-          allEmployees = allEmployees.sort((a, b) => {
-            const idA = this.getEmployeeId(a);
-            const idB = this.getEmployeeId(b);
-            if (typeof idA === 'number' && typeof idB === 'number') {
-              return idA - idB;
-            }
-            return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-          });
-          
-          this.payslipAllEmployees = allEmployees;
-        },
-        error: (error) => {
-          console.error('Error loading all employees:', error);
-          this.payslipAllEmployees = [];
-        }
-      });
-    }
+      },
+      error: (error) => {
+        console.error('Error searching employees:', error);
+        this.bulkAvailableEmployees = [];
+      }
+    });
   }
+
 
   // 社員が選択されているかチェック
   isBulkEmployeeSelected(employee: Employee | Bonus): boolean {
@@ -2508,9 +2262,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 選択されていない場合は追加
       this.bulkSelectedEmployees.push(employee as Employee);
     }
-    
-    // フィルター結果を更新
-    this.updatePayslipFilteredEmployees();
   }
 
   addBulkEmployee(employee: Employee): void {
@@ -2526,8 +2277,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.bulkAvailableEmployees = this.bulkAvailableEmployees.filter(emp => 
         this.getEmployeeId(emp) !== empId
       );
-      // フィルター結果を更新
-      this.updatePayslipFilteredEmployees();
     }
   }
 
@@ -2540,8 +2289,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.bulkSearchTerm) {
       this.onBulkSearch();
     }
-    // フィルター結果を更新
-    this.updatePayslipFilteredEmployees();
   }
 
   onIndividualSearch(): void {
@@ -2552,125 +2299,39 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     const searchTerm = this.individualSearchTerm.toLowerCase().trim();
-    const isBonus = this.selectedDocumentType === 'document7';
     
-    // 給与/賞与明細書の場合は、選択された月のデータのみを検索
-    if (this.selectedDocumentType === 'document6' || this.selectedDocumentType === 'document7') {
-      if (!this.payslipSelectedMonth) {
-        this.individualSearchResults = [];
-        this.individualSelectedEmployee = null;
-        return;
-      }
-      
-      if (isBonus) {
-        this.employeeService.getBonuses().subscribe({
-          next: (data) => {
-            let filtered = data.filter(emp => {
-              const month = emp.月 || emp['month'];
-              return month === this.payslipSelectedMonth;
-            });
-            
-            filtered = filtered.filter(emp => {
-              const id = String(this.getEmployeeId(emp)).toLowerCase();
-              const name = this.getEmployeeName(emp).toLowerCase();
-              return id.includes(searchTerm) || name.includes(searchTerm);
-            });
-            
-            const uniqueEmployeesMap = new Map<string | number, Employee>();
-            filtered.forEach(emp => {
-              const empId = this.getEmployeeId(emp);
-              if (!uniqueEmployeesMap.has(empId)) {
-                uniqueEmployeesMap.set(empId, emp as any);
-              }
-            });
-            
-            this.individualSearchResults = Array.from(uniqueEmployeesMap.values())
-              .sort((a, b) => {
-                const idA = this.getEmployeeId(a);
-                const idB = this.getEmployeeId(b);
-                if (typeof idA === 'number' && typeof idB === 'number') {
-                  return idA - idB;
-                }
-                return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-              });
-          },
-          error: (error) => {
-            console.error('Error searching bonuses:', error);
-            this.individualSearchResults = [];
+    // 全データから検索
+    this.employeeService.getEmployees().subscribe({
+      next: (data) => {
+        const filtered = data.filter(emp => {
+          const id = String(this.getEmployeeId(emp)).toLowerCase();
+          const name = this.getEmployeeName(emp).toLowerCase();
+          return id.includes(searchTerm) || name.includes(searchTerm);
+        });
+        
+        const uniqueEmployeesMap = new Map<string | number, Employee>();
+        filtered.forEach(emp => {
+          const empId = this.getEmployeeId(emp);
+          if (!uniqueEmployeesMap.has(empId)) {
+            uniqueEmployeesMap.set(empId, emp);
           }
         });
-      } else {
-        this.employeeService.getEmployees().subscribe({
-          next: (data) => {
-            let filtered = data.filter(emp => {
-              const month = emp.月 || emp.month;
-              return month === this.payslipSelectedMonth;
-            });
-            
-            filtered = filtered.filter(emp => {
-              const id = String(this.getEmployeeId(emp)).toLowerCase();
-              const name = this.getEmployeeName(emp).toLowerCase();
-              return id.includes(searchTerm) || name.includes(searchTerm);
-            });
-            
-            const uniqueEmployeesMap = new Map<string | number, Employee>();
-            filtered.forEach(emp => {
-              const empId = this.getEmployeeId(emp);
-              if (!uniqueEmployeesMap.has(empId)) {
-                uniqueEmployeesMap.set(empId, emp);
-              }
-            });
-            
-            this.individualSearchResults = Array.from(uniqueEmployeesMap.values())
-              .sort((a, b) => {
-                const idA = this.getEmployeeId(a);
-                const idB = this.getEmployeeId(b);
-                if (typeof idA === 'number' && typeof idB === 'number') {
-                  return idA - idB;
-                }
-                return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-              });
-          },
-          error: (error) => {
-            console.error('Error searching employees:', error);
-            this.individualSearchResults = [];
-          }
-        });
-      }
-    } else {
-      // その他の書類の場合は全データから検索
-      this.employeeService.getEmployees().subscribe({
-        next: (data) => {
-          const filtered = data.filter(emp => {
-            const id = String(this.getEmployeeId(emp)).toLowerCase();
-            const name = this.getEmployeeName(emp).toLowerCase();
-            return id.includes(searchTerm) || name.includes(searchTerm);
-          });
-          
-          const uniqueEmployeesMap = new Map<string | number, Employee>();
-          filtered.forEach(emp => {
-            const empId = this.getEmployeeId(emp);
-            if (!uniqueEmployeesMap.has(empId)) {
-              uniqueEmployeesMap.set(empId, emp);
+        
+        this.individualSearchResults = Array.from(uniqueEmployeesMap.values())
+          .sort((a, b) => {
+            const idA = this.getEmployeeId(a);
+            const idB = this.getEmployeeId(b);
+            if (typeof idA === 'number' && typeof idB === 'number') {
+              return idA - idB;
             }
+            return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
           });
-          
-          this.individualSearchResults = Array.from(uniqueEmployeesMap.values())
-            .sort((a, b) => {
-              const idA = this.getEmployeeId(a);
-              const idB = this.getEmployeeId(b);
-              if (typeof idA === 'number' && typeof idB === 'number') {
-                return idA - idB;
-              }
-              return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-            });
-        },
-        error: (error) => {
-          console.error('Error searching employees:', error);
-          this.individualSearchResults = [];
-        }
-      });
-    }
+      },
+      error: (error) => {
+        console.error('Error searching employees:', error);
+        this.individualSearchResults = [];
+      }
+    });
   }
 
   selectIndividualEmployee(employee: Employee): void {
@@ -2679,45 +2340,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 書類タイプが変更されたときの処理
   onDocumentTypeChange(): void {
-    // 給与/賞与明細書が選択された場合、フィルター結果を更新
-    if (this.selectedDocumentType === 'document6' || this.selectedDocumentType === 'document7') {
-      // 月が選択されている場合はフィルター結果を更新
-      if (this.payslipSelectedMonth) {
-        this.updatePayslipFilteredEmployees();
-      } else {
-        this.payslipFilteredEmployees = [];
-      }
-    } else {
-      // その他の書類の場合はフィルター結果をクリア
-      this.payslipFilteredEmployees = [];
-    }
+    // 書類タイプが変更されたときの処理（現在は特に処理なし）
   }
 
   // 社員を追加フィルターが選択されたときの処理
   onCustomFilterSelected(): void {
-    // フィルター結果を更新
-    this.updatePayslipFilteredEmployees();
-    // 全社員一覧を読み込む
-    this.loadPayslipAllEmployees();
-  }
-
-  // 給与/賞与明細書の月が変更されたときの処理
-  onPayslipMonthChange(): void {
-    // フィルター結果を更新
-    this.updatePayslipFilteredEmployees();
-    // 社員を追加フィルターが選択されている場合、全社員一覧も更新
-    if (this.bulkFilterType === 'custom') {
-      this.loadPayslipAllEmployees();
-    }
-    // 選択された社員をクリア（月が変わったので）
-    this.bulkSelectedEmployees = [];
-    
-    // 個別作成モードの場合、検索欄をリセット
-    if (this.documentCreationMode === 'individual') {
-      this.individualSearchTerm = '';
-      this.individualSearchResults = [];
-      this.individualSelectedEmployee = null;
-    }
+    // 社員を追加フィルターが選択されたときの処理（現在は特に処理なし）
   }
 
   // 書類作成用の期間リストを読み込む
@@ -2770,9 +2398,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.selectedDocumentType === 'document1') {
       // 社会保険料控除一覧表
       this.createInsuranceDeductionList();
-    } else if (this.selectedDocumentType === 'document6' || this.selectedDocumentType === 'document7') {
-      // 給与明細書または賞与明細書
-      this.createPayslip();
     } else {
       alert('この書類タイプはまだ実装されていません');
     }
@@ -2919,412 +2544,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return filtered;
   }
 
-  // 給与/賞与明細書用の月リストを読み込む
-  loadPayslipMonths(): void {
-    // 給与データの月を読み込む
-    this.employeeService.getEmployees().subscribe({
-      next: (data) => {
-        const monthsSet = new Set<string>();
-        data.forEach(emp => {
-          const month = emp.月 || emp.month;
-          if (month) {
-            monthsSet.add(month);
-          }
-        });
-        this.payslipAvailableMonths = Array.from(monthsSet).sort();
-        
-        if (this.payslipAvailableMonths.length > 0 && !this.payslipSelectedMonth) {
-          this.payslipSelectedMonth = this.payslipAvailableMonths[0];
-        }
-        
-        // フィルター結果を更新
-        if (this.selectedDocumentType === 'document6' || this.selectedDocumentType === 'document7') {
-          this.updatePayslipFilteredEmployees();
-        }
-      },
-      error: (error) => {
-        console.error('Error loading payslip months:', error);
-      }
-    });
-    
-    // 賞与データの月を読み込む
-    this.employeeService.getBonuses().subscribe({
-      next: (data) => {
-        const monthsSet = new Set<string>();
-        data.forEach(bonus => {
-          const month = bonus.月 || bonus['month'];
-          if (month) {
-            monthsSet.add(month);
-          }
-        });
-        this.payslipAvailableBonusMonths = Array.from(monthsSet).sort();
-      },
-      error: (error) => {
-        console.error('Error loading payslip bonus months:', error);
-      }
-    });
-  }
-
-  // 給与/賞与明細書のフィルター結果を更新
-  updatePayslipFilteredEmployees(): void {
-    if (!this.payslipSelectedMonth) {
-      this.payslipFilteredEmployees = [];
-      return;
-    }
-
-    const isBonus = this.selectedDocumentType === 'document7';
-
-    if (isBonus) {
-      this.employeeService.getBonuses().subscribe({
-        next: (data) => {
-          let filtered = data.filter(emp => {
-            const month = emp.月 || emp['month'];
-            return month === this.payslipSelectedMonth;
-          });
-          
-          filtered = this.filterEmployeesForDocument(filtered as any);
-          
-          // 社員IDでソート
-          filtered = filtered.sort((a, b) => {
-            const idA = this.getEmployeeId(a);
-            const idB = this.getEmployeeId(b);
-            // 数値として比較できる場合は数値で比較、そうでなければ文字列で比較
-            if (typeof idA === 'number' && typeof idB === 'number') {
-              return idA - idB;
-            }
-            return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-          });
-          
-          this.payslipFilteredEmployees = filtered as any;
-          
-          // 社員を追加フィルターが選択されている場合、全社員一覧も更新
-          if (this.bulkFilterType === 'custom') {
-            this.loadPayslipAllEmployees();
-          }
-        },
-        error: (error) => {
-          console.error('Error loading bonuses for filter:', error);
-          this.payslipFilteredEmployees = [];
-        }
-      });
-    } else {
-      this.employeeService.getEmployees().subscribe({
-        next: (data) => {
-          let filtered = data.filter(emp => {
-            const month = emp.月 || emp.month;
-            return month === this.payslipSelectedMonth;
-          });
-          
-          filtered = this.filterEmployeesForDocument(filtered);
-          
-          // 社員IDでソート
-          filtered = filtered.sort((a, b) => {
-            const idA = this.getEmployeeId(a);
-            const idB = this.getEmployeeId(b);
-            // 数値として比較できる場合は数値で比較、そうでなければ文字列で比較
-            if (typeof idA === 'number' && typeof idB === 'number') {
-              return idA - idB;
-            }
-            return String(idA).localeCompare(String(idB), 'ja', { numeric: true });
-          });
-          
-          this.payslipFilteredEmployees = filtered;
-          
-          // 社員を追加フィルターが選択されている場合、全社員一覧も更新
-          if (this.bulkFilterType === 'custom') {
-            this.loadPayslipAllEmployees();
-          }
-        },
-        error: (error) => {
-          console.error('Error loading employees for filter:', error);
-          this.payslipFilteredEmployees = [];
-        }
-      });
-    }
-  }
-
-  // 給与/賞与明細書を作成
-  createPayslip(): void {
-    if (!this.payslipSelectedMonth) {
-      alert('月を選択してください');
-      return;
-    }
-
-    const isBonus = this.selectedDocumentType === 'document7';
-    this.payslipType = isBonus ? 'bonus' : 'salary';
-
-    if (this.documentCreationMode === 'bulk') {
-      // 一括作成の場合
-      if (isBonus) {
-        this.employeeService.getBonuses().subscribe({
-          next: (allBonuses) => {
-            let filtered = allBonuses.filter(bonus => {
-              const month = bonus.月 || bonus['month'];
-              return month === this.payslipSelectedMonth;
-            });
-            
-            filtered = this.filterEmployeesForDocument(filtered as any);
-            
-            if (filtered.length === 0) {
-              alert('該当する社員がありません');
-              return;
-            }
-            
-            this.generatePayslipPDF(filtered as any, isBonus);
-          },
-          error: (error) => {
-            console.error('Error loading bonuses for payslip:', error);
-            alert('データの読み込みに失敗しました');
-          }
-        });
-      } else {
-        this.employeeService.getEmployees().subscribe({
-          next: (allEmployees) => {
-            let filtered = allEmployees.filter(emp => {
-              const month = emp.月 || emp.month;
-              return month === this.payslipSelectedMonth;
-            });
-            
-            filtered = this.filterEmployeesForDocument(filtered);
-            
-            if (filtered.length === 0) {
-              alert('該当する社員がありません');
-              return;
-            }
-            
-            this.generatePayslipPDF(filtered, isBonus);
-          },
-          error: (error) => {
-            console.error('Error loading employees for payslip:', error);
-            alert('データの読み込みに失敗しました');
-          }
-        });
-      }
-    } else {
-      // 個別作成の場合
-      if (!this.individualSelectedEmployee) {
-        alert('社員を選択してください');
-        return;
-      }
-      
-      if (isBonus) {
-        this.employeeService.getBonuses().subscribe({
-          next: (allBonuses) => {
-            const filtered = allBonuses.filter(bonus => {
-              const month = bonus.月 || bonus['month'];
-              const empId = this.getEmployeeId(bonus);
-              const selectedId = this.getEmployeeId(this.individualSelectedEmployee!);
-              return month === this.payslipSelectedMonth && empId === selectedId;
-            });
-            
-            if (filtered.length === 0) {
-              alert('該当するデータがありません');
-              return;
-            }
-            
-            this.generatePayslipPDF(filtered as any, isBonus);
-          },
-          error: (error) => {
-            console.error('Error loading bonuses for payslip:', error);
-            alert('データの読み込みに失敗しました');
-          }
-        });
-      } else {
-        this.employeeService.getEmployees().subscribe({
-          next: (allEmployees) => {
-            const filtered = allEmployees.filter(emp => {
-              const month = emp.月 || emp.month;
-              const empId = this.getEmployeeId(emp);
-              const selectedId = this.getEmployeeId(this.individualSelectedEmployee!);
-              return month === this.payslipSelectedMonth && empId === selectedId;
-            });
-            
-            if (filtered.length === 0) {
-              alert('該当するデータがありません');
-              return;
-            }
-            
-            this.generatePayslipPDF(filtered, isBonus);
-          },
-          error: (error) => {
-            console.error('Error loading employees for payslip:', error);
-            alert('データの読み込みに失敗しました');
-          }
-        });
-      }
-    }
-  }
-
-  // 給与/賞与明細書のPDFを生成
-  generatePayslipPDF(employees: (Employee | Bonus)[], isBonus: boolean): void {
-    const documentType = isBonus ? '賞与明細書' : '給与明細書';
-    const month = this.payslipSelectedMonth;
-    
-    // 各社員ごとにPDFを生成
-    employees.forEach((emp, index) => {
-      const salary = isBonus ? this.getBonus(emp) : this.getSalary(emp);
-      const healthInsuranceTotal = this.getHealthInsurance(emp, isBonus);
-      const welfarePensionTotal = this.getWelfarePension(emp, isBonus);
-      const nursingInsuranceTotal = this.getNursingInsurance(emp, isBonus);
-      
-      // 本人負担額を計算（各保険料の半分、奇数処理、引き下げ額適用済み）
-      let healthInsurancePersonal: number;
-      if (healthInsuranceTotal % 2 === 1) {
-        healthInsurancePersonal = Math.floor((healthInsuranceTotal - 1) / 2);
-      } else {
-        healthInsurancePersonal = Math.floor(healthInsuranceTotal / 2);
-      }
-      
-      // 組合保険の場合、引き下げ額を適用
-      if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-        healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
-      }
-      
-      let welfarePensionPersonal: number;
-      if (welfarePensionTotal % 2 === 1) {
-        welfarePensionPersonal = Math.floor((welfarePensionTotal - 1) / 2);
-      } else {
-        welfarePensionPersonal = Math.floor(welfarePensionTotal / 2);
-      }
-      
-      let nursingInsurancePersonal: number;
-      if (nursingInsuranceTotal % 2 === 1) {
-        nursingInsurancePersonal = Math.floor((nursingInsuranceTotal - 1) / 2);
-      } else {
-        nursingInsurancePersonal = Math.floor(nursingInsuranceTotal / 2);
-      }
-      
-      const personalBurden = healthInsurancePersonal + welfarePensionPersonal + nursingInsurancePersonal;
-      const netPay = salary - personalBurden;
-      
-      const employeeName = this.getEmployeeName(emp);
-      const employeeId = this.getEmployeeId(emp);
-      
-      // HTML要素を作成
-      const content = document.createElement('div');
-      content.style.position = 'absolute';
-      content.style.left = '-9999px';
-      content.style.width = '210mm';
-      content.style.padding = '25mm';
-      content.style.fontFamily = '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif';
-      content.style.fontSize = '12px';
-      content.style.color = '#333';
-      content.style.backgroundColor = '#fff';
-      content.style.lineHeight = '1.6';
-      
-      let nursingInsuranceRow = '';
-      if (nursingInsurancePersonal > 0) {
-        nursingInsuranceRow = `
-          <tr>
-            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">介護保険料</td>
-            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${nursingInsurancePersonal.toLocaleString()}円</td>
-          </tr>
-        `;
-      }
-      
-      const companyName = this.companyInfo.companyName || '';
-      
-      content.innerHTML = `
-        <div style="position: relative; margin-bottom: 40px;">
-          ${companyName ? `<div style="position: absolute; top: 0; right: 0; font-size: 14px; font-weight: 600; color: #000; text-align: right;">${companyName}</div>` : ''}
-          <div style="text-align: center; padding-bottom: 20px; border-bottom: 3px solid #000; ${companyName ? 'padding-top: 30px;' : ''}">
-            <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 10px 0; color: #000; letter-spacing: 2px;">${month}　${documentType}</h1>
-            <p style="font-size: 14px; color: #000; margin: 5px 0;">社員ID: ${employeeId}</p>
-            <p style="font-size: 14px; color: #000; margin: 5px 0;">氏名: ${employeeName}</p>
-          </div>
-        </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 15px 0; color: #000; padding: 10px; background-color: #f5f5f5; border-left: 5px solid #000;">支給額</h2>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr style="background-color: #f5f5f5;">
-              <td style="padding: 18px; border: 1px solid #000; font-weight: 600; width: 40%; color: #000; font-size: 16px;">項目</td>
-              <td style="padding: 18px; border: 1px solid #000; font-weight: 600; text-align: right; color: #000; font-size: 16px;">金額</td>
-            </tr>
-            <tr>
-              <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">${isBonus ? '賞与' : '給料'}</td>
-              <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${salary.toLocaleString()}円</td>
-            </tr>
-          </table>
-        </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 15px 0; color: #000; padding: 10px; background-color: #f5f5f5; border-left: 5px solid #000;">控除額</h2>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr style="background-color: #f5f5f5;">
-              <td style="padding: 18px; border: 1px solid #000; font-weight: 600; width: 40%; color: #000; font-size: 16px;">項目</td>
-              <td style="padding: 18px; border: 1px solid #000; font-weight: 600; text-align: right; color: #000; font-size: 16px;">金額</td>
-            </tr>
-            <tr>
-              <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">健康保険料</td>
-              <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${healthInsurancePersonal.toLocaleString()}円</td>
-            </tr>
-            <tr style="background-color: #f5f5f5;">
-              <td style="padding: 18px; border: 1px solid #000; font-size: 16px;">厚生年金保険料</td>
-              <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; font-size: 16px;">${welfarePensionPersonal.toLocaleString()}円</td>
-            </tr>
-            ${nursingInsuranceRow}
-            <tr>
-              <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px; font-weight: 600;">社会保険料合計</td>
-              <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${personalBurden.toLocaleString()}円</td>
-            </tr>
-          </table>
-        </div>
-        
-        <div style="margin-top: 40px; padding: 25px; border: 2px solid #000; border-radius: 4px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 20px; font-weight: bold; color: #000;">差引支給額</span>
-            <span style="font-size: 24px; font-weight: bold; color: #000;">${netPay.toLocaleString()}円</span>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(content);
-      
-      // HTMLを画像に変換してPDFに追加
-      html2canvas(content, {
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: content.scrollWidth,
-        windowHeight: content.scrollHeight
-      } as any).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgWidth = 210;
-        const pageHeight = 297;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight;
-        
-        let position = 0;
-        
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-        
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-        }
-        
-        // ファイル名を生成
-        const fileName = `${month}_${employeeId}_${employeeName}_${documentType}.pdf`.replace(/\s+/g, '_');
-        
-        // PDFをダウンロード（複数の場合は少し遅延させる）
-        setTimeout(() => {
-          pdf.save(fileName);
-          document.body.removeChild(content);
-        }, index * 500);
-      }).catch(error => {
-        console.error('PDF生成エラー:', error);
-        alert('PDFの生成に失敗しました');
-        if (document.body.contains(content)) {
-          document.body.removeChild(content);
-        }
-      });
-    });
-  }
 
   // 月が期間範囲内にあるかチェック
   isMonthInRange(month: string, startMonth: string, endMonth: string): boolean {
@@ -3344,6 +2563,153 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const endNum = monthToNumber(endMonth);
 
     return monthNum >= startNum && monthNum <= endNum;
+  }
+
+  // レポートページからPDFを作成
+  createReportPDF(): void {
+    // フィルター条件を確認
+    if (this.reportFilterType === 'month' && !this.reportSelectedMonth) {
+      alert('表示月を選択してください');
+      return;
+    }
+    
+    if (this.reportFilterType === 'year' && !this.reportSelectedYear) {
+      alert('表示年を選択してください');
+      return;
+    }
+
+    // 期間の文字列を生成
+    let periodText = '';
+    if (this.reportFilterType === 'month') {
+      periodText = this.reportSelectedMonth;
+    } else if (this.reportFilterType === 'year') {
+      periodText = `${this.reportSelectedYear}年`;
+    }
+
+    // レポートの集計データを使用
+    const totalHealthInsurance = this.totalHealthInsurance;
+    const totalWelfarePension = this.totalWelfarePension;
+    const totalNursingInsurance = this.totalNursingInsurance;
+    const totalPersonalBurden = this.personalBurdenTotal;
+    const totalCompanyBurden = this.companyBurdenTotal;
+    const totalAmount = this.totalInsuranceTotal;
+
+    // HTML要素を作成
+    const content = document.createElement('div');
+    content.style.position = 'absolute';
+    content.style.left = '-9999px';
+    content.style.width = '210mm';
+    content.style.padding = '25mm';
+    content.style.fontFamily = '"Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif';
+    content.style.fontSize = '12px';
+    content.style.color = '#333';
+    content.style.backgroundColor = '#fff';
+    content.style.lineHeight = '1.6';
+    
+    const companyName = this.companyInfo.companyName || '';
+    const tableTypeLabel = this.reportTableType === 'salary' ? '給与' : '賞与';
+    
+    content.innerHTML = `
+      <div style="position: relative; margin-bottom: 40px;">
+        ${companyName ? `<div style="position: absolute; top: 0; right: 0; font-size: 14px; font-weight: 600; color: #000; text-align: right;">${companyName}</div>` : ''}
+        <div style="text-align: center; padding-bottom: 20px; border-bottom: 3px solid #000; ${companyName ? 'padding-top: 30px;' : ''}">
+          <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 10px 0; color: #000; letter-spacing: 2px;">${periodText}　${tableTypeLabel}　社会保険料控除額一覧</h1>
+          <p style="font-size: 12px; color: #666; margin: 0;">作成日：${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 30px;">
+        <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 15px 0; color: #000; padding: 10px; background-color: #f5f5f5; border-left: 5px solid #000;">保険料内訳</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; width: 40%; color: #000; font-size: 16px;">項目</td>
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; text-align: right; color: #000; font-size: 16px;">金額</td>
+          </tr>
+          <tr>
+            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">健康保険料</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${totalHealthInsurance.toLocaleString()}円</td>
+          </tr>
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-size: 16px;">厚生年金保険料</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; font-size: 16px;">${totalWelfarePension.toLocaleString()}円</td>
+          </tr>
+          <tr>
+            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">介護保険料</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${totalNursingInsurance.toLocaleString()}円</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="margin-bottom: 30px;">
+        <h2 style="font-size: 18px; font-weight: bold; margin: 0 0 15px 0; color: #000; padding: 10px; background-color: #f5f5f5; border-left: 5px solid #000;">負担額内訳</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; width: 40%; color: #000; font-size: 16px;">項目</td>
+            <td style="padding: 18px; border: 1px solid #000; font-weight: 600; text-align: right; color: #000; font-size: 16px;">金額</td>
+          </tr>
+          <tr>
+            <td style="padding: 18px; border: 1px solid #000; background-color: #fff; font-size: 16px;">社員負担額</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; background-color: #fff; font-size: 16px;">${totalPersonalBurden.toLocaleString()}円</td>
+          </tr>
+          <tr style="background-color: #f5f5f5;">
+            <td style="padding: 18px; border: 1px solid #000; font-size: 16px;">会社負担額</td>
+            <td style="padding: 18px; border: 1px solid #000; text-align: right; font-weight: 600; font-size: 16px;">${totalCompanyBurden.toLocaleString()}円</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="margin-top: 40px; padding: 25px; border: 2px solid #000; border-radius: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #000;">合計額</span>
+          <span style="font-size: 24px; font-weight: bold; color: #000;">${totalAmount.toLocaleString()}円</span>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(content);
+    
+    // HTMLを画像に変換してPDFに追加
+    html2canvas(content, {
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: content.scrollWidth,
+      windowHeight: content.scrollHeight
+    } as any).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      // ファイル名を生成
+      const fileName = `${periodText}_${tableTypeLabel}_社会保険料控除額一覧.pdf`.replace(/\s+/g, '_');
+      
+      // PDFをダウンロード
+      pdf.save(fileName);
+      
+      // 一時要素を削除
+      document.body.removeChild(content);
+    }).catch(error => {
+      console.error('PDF生成エラー:', error);
+      alert('PDFの生成に失敗しました');
+      if (document.body.contains(content)) {
+        document.body.removeChild(content);
+      }
+    });
   }
 
   // 社会保険料控除一覧表のPDFを生成
