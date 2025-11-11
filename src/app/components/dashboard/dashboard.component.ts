@@ -135,6 +135,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   sortedEmployees: Employee[] = [];
   sortedBonuses: Bonus[] = [];
   isLoading = false;
+  private allEmployeesData: Employee[] = []; // 全期間の給与データを保持
   
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
@@ -413,6 +414,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // すべてのデータを読み込んで利用可能な月のリストを取得
     this.employeeService.getEmployees().subscribe({
       next: (data) => {
+        // 全期間の給与データを保持（標準報酬月額の計算に使用）
+        this.allEmployeesData = data;
         const monthsSet = new Set<string>();
         data.forEach(emp => {
           const month = emp.月 || emp.month;
@@ -916,7 +919,102 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getStandardSalary(employee: Employee | Bonus): number {
-    return employee.標準報酬月額 ?? employee.standardSalary ?? 0;
+    // 既に標準報酬月額が設定されている場合はそれを返す
+    if (employee.標準報酬月額 || employee.standardSalary) {
+      return employee.標準報酬月額 ?? employee.standardSalary ?? 0;
+    }
+
+    // 給与テーブルの場合のみ計算
+    if (this.tableType !== 'salary') {
+      return 0;
+    }
+
+    const currentMonth = employee.月 || employee.month;
+    if (!currentMonth) {
+      return 0;
+    }
+
+    const employeeId = this.getEmployeeId(employee);
+    const salary = this.getSalary(employee);
+
+    // 月を数値に変換（例: "2024年04月" -> 202404）
+    const monthNum = this.monthToNumber(currentMonth);
+
+    // 2024年4月～2025年9月の場合：2024年4~6月の給与の平均値を使用
+    if (monthNum >= 202404 && monthNum <= 202509) {
+      return this.calculateAverageSalaryForPeriod(employeeId, '2024年04月', '2024年06月', currentMonth);
+    }
+    
+    // 2025年10月～2026年3月の場合：2025年4~6月の給与の平均値を使用
+    if (monthNum >= 202510 && monthNum <= 202603) {
+      return this.calculateAverageSalaryForPeriod(employeeId, '2025年04月', '2025年06月', currentMonth);
+    }
+
+    // その他の期間の場合は、現在の給与を標準報酬月額とする
+    return salary;
+  }
+
+  /**
+   * 指定期間の給与の平均値を計算
+   * 4月に所属していなかった場合、新しく追加された際の給与を標準報酬月額とする
+   */
+  private calculateAverageSalaryForPeriod(employeeId: number | string, startMonth: string, endMonth: string, currentMonth: string): number {
+    // 該当社員の全期間の給与データを取得
+    const employeeData = this.allEmployeesData.filter(emp => {
+      const id = this.getEmployeeId(emp);
+      return id === employeeId;
+    });
+
+    if (employeeData.length === 0) {
+      return 0;
+    }
+
+    // 4月に所属していたかチェック
+    const startMonthNum = this.monthToNumber(startMonth);
+    const hasAprilData = employeeData.some(emp => {
+      const month = emp.月 || emp.month;
+      if (!month) return false;
+      const monthNum = this.monthToNumber(month);
+      return monthNum === startMonthNum;
+    });
+
+    // 4月に所属していなかった場合、新しく追加された際の給与を標準報酬月額とする
+    if (!hasAprilData) {
+      // 最初に追加された月の給与を取得
+      const sortedData = employeeData.sort((a, b) => {
+        const monthA = a.月 || a.month || '';
+        const monthB = b.月 || b.month || '';
+        return monthA.localeCompare(monthB);
+      });
+      
+      if (sortedData.length > 0) {
+        const firstMonthData = sortedData[0];
+        return this.getSalary(firstMonthData);
+      }
+      return 0;
+    }
+
+    // 4月に所属していた場合、指定期間（4~6月）の給与の平均値を計算
+    const startMonthNum2 = this.monthToNumber(startMonth);
+    const endMonthNum = this.monthToNumber(endMonth);
+    
+    const periodData = employeeData.filter(emp => {
+      const month = emp.月 || emp.month;
+      if (!month) return false;
+      const monthNum = this.monthToNumber(month);
+      return monthNum >= startMonthNum2 && monthNum <= endMonthNum;
+    });
+
+    if (periodData.length === 0) {
+      return 0;
+    }
+
+    // 給与の平均値を計算
+    const totalSalary = periodData.reduce((sum, emp) => {
+      return sum + this.getSalary(emp);
+    }, 0);
+
+    return Math.round(totalSalary / periodData.length);
   }
 
   getStandardBonus(employee: Employee | Bonus): number {
