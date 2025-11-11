@@ -149,10 +149,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // フィルター用
   filterDepartment: string = '';
-  filterEmploymentType: string = '';
   filterNursingInsurance: string = ''; // 'all', 'with', 'without'
   availableDepartments: string[] = [];
-  availableEmploymentTypes: string[] = [];
 
   // 書類作成用
   documentTypes = [
@@ -404,22 +402,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   updateFilterOptions(data: Employee[] | Bonus[]): void {
     // 部署のリストを取得
     const departmentsSet = new Set<string>();
-    const employmentTypesSet = new Set<string>();
     
     data.forEach(item => {
       const department = (item as any).部署 ?? (item as any).department;
-      const employmentType = (item as any).雇用形態 ?? (item as any).employmentType;
       
       if (department) {
         departmentsSet.add(department);
       }
-      if (employmentType) {
-        employmentTypesSet.add(employmentType);
-      }
     });
     
     this.availableDepartments = Array.from(departmentsSet).sort();
-    this.availableEmploymentTypes = Array.from(employmentTypesSet).sort();
   }
 
   applyFilters(): void {
@@ -430,14 +422,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       filtered = filtered.filter(emp => {
         const department = (emp as any).部署 ?? (emp as any).department;
         return department === this.filterDepartment;
-      });
-    }
-
-    // 雇用形態でフィルター
-    if (this.filterEmploymentType) {
-      filtered = filtered.filter(emp => {
-        const employmentType = (emp as any).雇用形態 ?? (emp as any).employmentType;
-        return employmentType === this.filterEmploymentType;
       });
     }
 
@@ -523,14 +507,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // 雇用形態でフィルター
-    if (this.filterEmploymentType) {
-      filtered = filtered.filter(bonus => {
-        const employmentType = (bonus as any).雇用形態 ?? (bonus as any).employmentType;
-        return employmentType === this.filterEmploymentType;
-      });
-    }
-
     // 介護保険でフィルター
     if (this.filterNursingInsurance === 'with') {
       filtered = filtered.filter(bonus => {
@@ -612,7 +588,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.tableType = type;
     // フィルターをリセット
     this.filterDepartment = '';
-    this.filterEmploymentType = '';
     this.filterNursingInsurance = '';
     // 月をリセット
     if (type === 'salary') {

@@ -77,19 +77,6 @@
               </select>
             </div>
             <div class="filter-item">
-              <label for="employment-type-filter" class="filter-label">雇用形態:</label>
-              <select 
-                id="employment-type-filter" 
-                class="filter-select"
-                [value]="filterEmploymentType"
-                (change)="filterEmploymentType = $any($event.target).value; onFilterChange()">
-                <option value="">すべて</option>
-                <option *ngFor="let type of availableEmploymentTypes" [value]="type">
-                  {{ type }}
-                </option>
-              </select>
-            </div>
-            <div class="filter-item">
               <label for="nursing-insurance-filter" class="filter-label">介護保険:</label>
               <select 
                 id="nursing-insurance-filter" 
