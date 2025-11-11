@@ -973,16 +973,42 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 等級.jsonを参照して、計算された標準報酬月額がどの範囲に当てはまるかを確認
     // 当てはまった部分のmonthlyStandardの値を標準報酬月額として返す
     if (this.gradeData.length > 0 && calculatedStandardSalary > 0) {
+      // 協会けんぽの場合、標準報酬月額の最大値を139万円に制限
+      if (this.healthInsuranceType === 'kyokai') {
+        const maxStandardSalary = 1390000; // 139万円
+        if (calculatedStandardSalary > maxStandardSalary) {
+          calculatedStandardSalary = maxStandardSalary;
+        }
+      }
+
       const matchedGrade = this.gradeData.find(grade => {
         return calculatedStandardSalary >= grade.from && calculatedStandardSalary <= grade.to;
       });
 
       if (matchedGrade) {
-        return matchedGrade.monthlyStandard;
+        let standardSalary = matchedGrade.monthlyStandard;
+        
+        // 協会けんぽの場合、標準報酬月額の最大値を139万円に制限
+        if (this.healthInsuranceType === 'kyokai') {
+          const maxStandardSalary = 1390000; // 139万円
+          if (standardSalary > maxStandardSalary) {
+            standardSalary = maxStandardSalary;
+          }
+        }
+        
+        return standardSalary;
       }
     }
 
     // 等級データが読み込まれていない場合や、範囲に当てはまらない場合は計算値を返す
+    // 協会けんぽの場合、標準報酬月額の最大値を139万円に制限
+    if (this.healthInsuranceType === 'kyokai') {
+      const maxStandardSalary = 1390000; // 139万円
+      if (calculatedStandardSalary > maxStandardSalary) {
+        return maxStandardSalary;
+      }
+    }
+    
     return calculatedStandardSalary;
   }
 
@@ -1085,18 +1111,41 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
 
       if (matchedGrade) {
-        return matchedGrade.grade;
+        let gradeValue = matchedGrade.grade;
+        
+        // 協会けんぽの場合、等級の最大値を50に制限
+        if (this.healthInsuranceType === 'kyokai' && gradeValue > 50) {
+          gradeValue = 50;
+        }
+        
+        return gradeValue;
       }
 
       // monthlyStandardで見つからない場合、計算された標準報酬月額（給与の平均値）から等級を検索
       const calculatedStandardSalary = this.getCalculatedStandardSalary(employee);
       if (calculatedStandardSalary > 0) {
+        // 協会けんぽの場合、計算された標準報酬月額の最大値を139万円に制限
+        let searchSalary = calculatedStandardSalary;
+        if (this.healthInsuranceType === 'kyokai') {
+          const maxStandardSalary = 1390000; // 139万円
+          if (searchSalary > maxStandardSalary) {
+            searchSalary = maxStandardSalary;
+          }
+        }
+        
         const matchedGradeByRange = this.gradeData.find(grade => {
-          return calculatedStandardSalary >= grade.from && calculatedStandardSalary <= grade.to;
+          return searchSalary >= grade.from && searchSalary <= grade.to;
         });
 
         if (matchedGradeByRange) {
-          return matchedGradeByRange.grade;
+          let gradeValue = matchedGradeByRange.grade;
+          
+          // 協会けんぽの場合、等級の最大値を50に制限
+          if (this.healthInsuranceType === 'kyokai' && gradeValue > 50) {
+            gradeValue = 50;
+          }
+          
+          return gradeValue;
         }
       }
     }
