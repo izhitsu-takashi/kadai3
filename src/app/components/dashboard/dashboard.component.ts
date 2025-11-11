@@ -2031,8 +2031,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       
       // 範囲チェック
-      if (this.insuranceRate < 0 || this.insuranceRate > 100) {
-        alert('保険料率は0〜100の範囲で入力してください');
+      if (this.insuranceRate < 0 || this.insuranceRate > 13) {
+        alert('保険料率は0〜13%の範囲で入力してください');
         return;
       }
     }
@@ -2164,11 +2164,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 有効な数値の場合のみ更新
     if (!isNaN(numValue)) {
-      // 100を超える場合は100に制限
-      if (numValue > 100) {
-        this.insuranceRate = 100;
-        this.insuranceRateDisplay = '100';
-        event.target.value = '100';
+      // 13を超える場合は13に制限
+      if (numValue > 13) {
+        this.insuranceRate = 13;
+        this.insuranceRateDisplay = '13';
+        event.target.value = '13';
+        this.insuranceRateError = '保険料率は13%以下で入力してください';
       } else {
         this.insuranceRate = numValue;
         // 小数点以下2桁まで表示
