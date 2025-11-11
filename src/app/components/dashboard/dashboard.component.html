@@ -505,6 +505,16 @@
               <p class="total-amount">{{ companyBurdenTotal.toLocaleString() }}円</p>
             </div>
           </div>
+          <div class="chart-card">
+            <h3 class="chart-title">合計保険料</h3>
+            <div class="chart-wrapper">
+              <canvas #totalBurdenChart></canvas>
+            </div>
+            <div class="chart-total">
+              <p class="total-label">合計額</p>
+              <p class="total-amount">{{ totalInsuranceTotal.toLocaleString() }}円</p>
+            </div>
+          </div>
         </div>
       </div>
       <!-- 書類作成ページ -->

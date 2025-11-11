@@ -22,6 +22,7 @@ Chart.register(...registerables);
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('personalBurdenChart', { static: false }) personalBurdenChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('companyBurdenChart', { static: false }) companyBurdenChartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('totalBurdenChart', { static: false }) totalBurdenChartRef!: ElementRef<HTMLCanvasElement>;
   appName = 'Easy保険管理';
   selectedMenuId: string = 'insurance-list';
   menuItems = [
@@ -215,8 +216,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   companyHealthInsurance: number = 0;
   companyWelfarePension: number = 0;
   companyNursingInsurance: number = 0;
+  totalHealthInsurance: number = 0;
+  totalWelfarePension: number = 0;
+  totalNursingInsurance: number = 0;
+  totalInsuranceTotal: number = 0;
   personalBurdenChart: any = null;
   companyBurdenChart: any = null;
+  totalBurdenChart: any = null;
 
   salaryColumns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
@@ -311,6 +317,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.companyBurdenChart) {
       this.companyBurdenChart.destroy();
+    }
+    if (this.totalBurdenChart) {
+      this.totalBurdenChart.destroy();
     }
   }
 
@@ -1334,6 +1343,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.companyWelfarePension = 0;
       this.companyNursingInsurance = 0;
       this.companyBurdenTotal = 0;
+      this.totalHealthInsurance = 0;
+      this.totalWelfarePension = 0;
+      this.totalNursingInsurance = 0;
+      this.totalInsuranceTotal = 0;
       return;
     }
     
@@ -1347,6 +1360,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.companyWelfarePension = 0;
       this.companyNursingInsurance = 0;
       this.companyBurdenTotal = 0;
+      this.totalHealthInsurance = 0;
+      this.totalWelfarePension = 0;
+      this.totalNursingInsurance = 0;
+      this.totalInsuranceTotal = 0;
       return;
     }
 
@@ -1460,6 +1477,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }, 0);
       
       this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
+      
+      // 合計保険料を計算（社員負担額 + 会社負担額）
+      this.totalHealthInsurance = this.personalHealthInsurance + this.companyHealthInsurance;
+      this.totalWelfarePension = this.personalWelfarePension + this.companyWelfarePension;
+      this.totalNursingInsurance = this.personalNursingInsurance + this.companyNursingInsurance;
+      this.totalInsuranceTotal = this.totalHealthInsurance + this.totalWelfarePension + this.totalNursingInsurance;
     } else {
       // 賞与データの計算
       let filteredBonuses: Bonus[] = [];
@@ -1570,11 +1593,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }, 0);
       
       this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
+      
+      // 合計保険料を計算（社員負担額 + 会社負担額）
+      this.totalHealthInsurance = this.personalHealthInsurance + this.companyHealthInsurance;
+      this.totalWelfarePension = this.personalWelfarePension + this.companyWelfarePension;
+      this.totalNursingInsurance = this.personalNursingInsurance + this.companyNursingInsurance;
+      this.totalInsuranceTotal = this.totalHealthInsurance + this.totalWelfarePension + this.totalNursingInsurance;
     }
   }
 
   updateCharts(): void {
-    if (!this.personalBurdenChartRef || !this.companyBurdenChartRef) {
+    if (!this.personalBurdenChartRef || !this.companyBurdenChartRef || !this.totalBurdenChartRef) {
       return;
     }
 
@@ -1584,6 +1613,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.companyBurdenChart) {
       this.companyBurdenChart.destroy();
+    }
+    if (this.totalBurdenChart) {
+      this.totalBurdenChart.destroy();
     }
 
     // 社員負担額の円グラフ（健康保険料、厚生年金保険料、介護保険料の3項目）
@@ -1650,6 +1682,58 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
               this.companyHealthInsurance,
               this.companyWelfarePension,
               this.companyNursingInsurance
+            ],
+            backgroundColor: [
+              '#90EE90', // 薄い緑
+              '#FFB6C1', // 薄い赤
+              '#87CEEB'  // 水色
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                padding: 15,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const label = context.label || '';
+                  const value = context.parsed || 0;
+                  const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  return `${label}: ${value.toLocaleString()}円 (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 合計保険料の円グラフ（健康保険料、厚生年金保険料、介護保険料の3項目）
+    const totalCtx = this.totalBurdenChartRef.nativeElement.getContext('2d');
+    if (totalCtx) {
+      this.totalBurdenChart = new Chart(totalCtx, {
+        type: 'pie',
+        data: {
+          labels: ['健康保険料', '厚生年金保険料', '介護保険料'],
+          datasets: [{
+            data: [
+              this.totalHealthInsurance,
+              this.totalWelfarePension,
+              this.totalNursingInsurance
             ],
             backgroundColor: [
               '#90EE90', // 薄い緑
