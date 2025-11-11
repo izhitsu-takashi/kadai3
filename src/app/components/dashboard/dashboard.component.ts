@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, Cha
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { EmployeeService, Employee, Bonus } from '../../services/employee.service';
 import { FirestoreService } from '../../services/firestore.service';
 import { ImportComponent } from '../import/import.component';
@@ -136,6 +137,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   sortedBonuses: Bonus[] = [];
   isLoading = false;
   private allEmployeesData: Employee[] = []; // 全期間の給与データを保持
+  private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ
   
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
@@ -241,12 +243,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     private employeeService: EmployeeService,
     private firestoreService: FirestoreService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
     // 月データの読み込みカウンターをリセット
     this.monthsLoadCounter = 0;
+    // 等級データを読み込む
+    this.loadGradeData();
     // まずすべてのデータを読み込んで利用可能な月のリストを取得
     this.loadAvailableMonths();
     this.loadAvailableBonusMonths();
@@ -311,6 +316,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.totalBurdenChart) {
       this.totalBurdenChart.destroy();
     }
+  }
+
+  /**
+   * 等級データを読み込む
+   */
+  private loadGradeData(): void {
+    this.http.get<{ hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> }>('/assets/等級.json').subscribe({
+      next: (data: { hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> }) => {
+        this.gradeData = data.hyouzyungetugakuReiwa7 || [];
+      },
+      error: (error: any) => {
+        console.error('Error loading grade data:', error);
+        this.gradeData = [];
+      }
+    });
   }
 
   /**
@@ -919,19 +939,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getStandardSalary(employee: Employee | Bonus): number {
-    // 既に標準報酬月額が設定されている場合はそれを返す
-    if (employee.標準報酬月額 || employee.standardSalary) {
-      return employee.標準報酬月額 ?? employee.standardSalary ?? 0;
-    }
-
     // 給与テーブルの場合のみ計算
     if (this.tableType !== 'salary') {
-      return 0;
+      return employee.標準報酬月額 ?? employee.standardSalary ?? 0;
     }
 
     const currentMonth = employee.月 || employee.month;
     if (!currentMonth) {
-      return 0;
+      return employee.標準報酬月額 ?? employee.standardSalary ?? 0;
     }
 
     const employeeId = this.getEmployeeId(employee);
@@ -940,18 +955,35 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 月を数値に変換（例: "2024年04月" -> 202404）
     const monthNum = this.monthToNumber(currentMonth);
 
+    let calculatedStandardSalary: number;
+
     // 2024年4月～2025年9月の場合：2024年4~6月の給与の平均値を使用
     if (monthNum >= 202404 && monthNum <= 202509) {
-      return this.calculateAverageSalaryForPeriod(employeeId, '2024年04月', '2024年06月', currentMonth);
+      calculatedStandardSalary = this.calculateAverageSalaryForPeriod(employeeId, '2024年04月', '2024年06月', currentMonth);
     }
-    
     // 2025年10月～2026年3月の場合：2025年4~6月の給与の平均値を使用
-    if (monthNum >= 202510 && monthNum <= 202603) {
-      return this.calculateAverageSalaryForPeriod(employeeId, '2025年04月', '2025年06月', currentMonth);
+    else if (monthNum >= 202510 && monthNum <= 202603) {
+      calculatedStandardSalary = this.calculateAverageSalaryForPeriod(employeeId, '2025年04月', '2025年06月', currentMonth);
+    }
+    // その他の期間の場合は、現在の給与を標準報酬月額とする
+    else {
+      calculatedStandardSalary = salary;
     }
 
-    // その他の期間の場合は、現在の給与を標準報酬月額とする
-    return salary;
+    // 等級.jsonを参照して、計算された標準報酬月額がどの範囲に当てはまるかを確認
+    // 当てはまった部分のmonthlyStandardの値を標準報酬月額として返す
+    if (this.gradeData.length > 0 && calculatedStandardSalary > 0) {
+      const matchedGrade = this.gradeData.find(grade => {
+        return calculatedStandardSalary >= grade.from && calculatedStandardSalary <= grade.to;
+      });
+
+      if (matchedGrade) {
+        return matchedGrade.monthlyStandard;
+      }
+    }
+
+    // 等級データが読み込まれていない場合や、範囲に当てはまらない場合は計算値を返す
+    return calculatedStandardSalary;
   }
 
   /**
@@ -1030,7 +1062,75 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getGrade(employee: Employee | Bonus): number {
-    return employee.等級 ?? employee.grade ?? 0;
+    // 既に等級が設定されている場合はそれを返す
+    if (employee.等級 || employee.grade) {
+      return employee.等級 ?? employee.grade ?? 0;
+    }
+
+    // 給与テーブルの場合のみ計算
+    if (this.tableType !== 'salary') {
+      return 0;
+    }
+
+    // 標準報酬月額を取得
+    const standardSalary = this.getStandardSalary(employee);
+
+    // 等級.jsonを参照して、標準報酬月額がどの範囲に当てはまるかを確認
+    // 当てはまった部分のgradeの値を等級として返す
+    if (this.gradeData.length > 0 && standardSalary > 0) {
+      const matchedGrade = this.gradeData.find(grade => {
+        // 標準報酬月額がfrom~toの範囲に当てはまるか確認
+        // ただし、標準報酬月額はmonthlyStandardの値なので、それを基準に検索
+        return standardSalary === grade.monthlyStandard;
+      });
+
+      if (matchedGrade) {
+        return matchedGrade.grade;
+      }
+
+      // monthlyStandardで見つからない場合、計算された標準報酬月額（給与の平均値）から等級を検索
+      const calculatedStandardSalary = this.getCalculatedStandardSalary(employee);
+      if (calculatedStandardSalary > 0) {
+        const matchedGradeByRange = this.gradeData.find(grade => {
+          return calculatedStandardSalary >= grade.from && calculatedStandardSalary <= grade.to;
+        });
+
+        if (matchedGradeByRange) {
+          return matchedGradeByRange.grade;
+        }
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * 計算された標準報酬月額を取得（等級.jsonによる補正前の値）
+   */
+  private getCalculatedStandardSalary(employee: Employee | Bonus): number {
+    const currentMonth = employee.月 || employee.month;
+    if (!currentMonth) {
+      return 0;
+    }
+
+    const employeeId = this.getEmployeeId(employee);
+    const salary = this.getSalary(employee);
+
+    // 月を数値に変換（例: "2024年04月" -> 202404）
+    const monthNum = this.monthToNumber(currentMonth);
+
+    // 2024年4月～2025年9月の場合：2024年4~6月の給与の平均値を使用
+    if (monthNum >= 202404 && monthNum <= 202509) {
+      return this.calculateAverageSalaryForPeriod(employeeId, '2024年04月', '2024年06月', currentMonth);
+    }
+    
+    // 2025年10月～2026年3月の場合：2025年4~6月の給与の平均値を使用
+    if (monthNum >= 202510 && monthNum <= 202603) {
+      return this.calculateAverageSalaryForPeriod(employeeId, '2025年04月', '2025年06月', currentMonth);
+    }
+
+    // その他の期間の場合は、現在の給与を標準報酬月額とする
+    return salary;
   }
 
   getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
