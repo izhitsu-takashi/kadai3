@@ -223,28 +223,6 @@
                 [disabled]="!isCompanyInfoEditing"
                 placeholder="所在地（住所）を入力してください">
             </div>
-            <div class="form-group">
-              <label for="corporateNumber" class="form-label">法人番号</label>
-              <input 
-                type="text" 
-                id="corporateNumber" 
-                class="form-input"
-                [(ngModel)]="companyInfo.corporateNumber"
-                name="corporateNumber"
-                [disabled]="!isCompanyInfoEditing"
-                placeholder="法人番号を入力してください">
-            </div>
-            <div class="form-group">
-              <label for="officeNumber" class="form-label">事業所番号（健康保険・厚生年金）</label>
-              <input 
-                type="text" 
-                id="officeNumber" 
-                class="form-input"
-                [(ngModel)]="companyInfo.officeNumber"
-                name="officeNumber"
-                [disabled]="!isCompanyInfoEditing"
-                placeholder="事業所番号を入力してください">
-            </div>
             <div class="form-actions">
               <button 
                 *ngIf="isCompanyInfoEditing" 

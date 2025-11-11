@@ -94,9 +94,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // 企業情報設定用
   companyInfo = {
     companyName: '',
-    address: '',
-    corporateNumber: '',
-    officeNumber: ''
+    address: ''
   };
   isCompanyInfoSaved: boolean = false;
   isCompanyInfoEditing: boolean = true;
@@ -1731,13 +1729,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         const data = docSnap.data();
         this.companyInfo = {
           companyName: data['companyName'] || '',
-          address: data['address'] || '',
-          corporateNumber: data['corporateNumber'] || '',
-          officeNumber: data['officeNumber'] || ''
+          address: data['address'] || ''
         };
         // データが存在する場合は保存済み状態にする
-        if (this.companyInfo.companyName || this.companyInfo.address || 
-            this.companyInfo.corporateNumber || this.companyInfo.officeNumber) {
+        if (this.companyInfo.companyName || this.companyInfo.address) {
           this.isCompanyInfoSaved = true;
           this.isCompanyInfoEditing = false;
         }
@@ -1762,8 +1757,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       await setDoc(docRef, {
         companyName: this.companyInfo.companyName,
         address: this.companyInfo.address,
-        corporateNumber: this.companyInfo.corporateNumber,
-        officeNumber: this.companyInfo.officeNumber,
         updatedAt: new Date()
       }, { merge: true });
 
@@ -3042,9 +3035,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 企業情報が空白かチェック
     const isCompanyInfoEmpty = !this.companyInfo.companyName && 
-                                !this.companyInfo.address && 
-                                !this.companyInfo.corporateNumber && 
-                                !this.companyInfo.officeNumber;
+                                !this.companyInfo.address;
     
     // 健康保険設定が空白かチェック
     let isHealthInsuranceEmpty = false;
@@ -3073,9 +3064,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (subMenuId === 'company-settings') {
       // 企業情報が空白かチェック
       return !this.companyInfo.companyName && 
-             !this.companyInfo.address && 
-             !this.companyInfo.corporateNumber && 
-             !this.companyInfo.officeNumber;
+             !this.companyInfo.address;
     }
     if (subMenuId === 'health-insurance-settings') {
       // 健康保険設定が空白かチェック
@@ -3111,9 +3100,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // すべてのフィールドが空白の場合は保存しない
     if (!this.companyInfo.companyName && 
-        !this.companyInfo.address && 
-        !this.companyInfo.corporateNumber && 
-        !this.companyInfo.officeNumber) {
+        !this.companyInfo.address) {
       return;
     }
     
@@ -3127,8 +3114,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       await setDoc(docRef, {
         companyName: this.companyInfo.companyName,
         address: this.companyInfo.address,
-        corporateNumber: this.companyInfo.corporateNumber,
-        officeNumber: this.companyInfo.officeNumber,
         updatedAt: new Date()
       }, { merge: true });
 
