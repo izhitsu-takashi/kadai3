@@ -1655,16 +1655,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           setTimeout(() => {
             this.setCurrentMonthForReport();
           }, 0);
-        } else {
-          // レポートページでない場合は、最初の月/年を選択
-          if (this.availableMonths.length > 0 && !this.reportSelectedMonth) {
-            this.reportSelectedMonth = this.availableMonths[0];
-          }
-          
-          if (this.availableYears.length > 0 && !this.reportSelectedYear) {
-            this.reportSelectedYear = this.availableYears[0];
-          }
         }
+        // レポートページでない場合は、reportSelectedMonthを変更しない（既存の値を維持）
         
         if (this.reportTableType === 'salary') {
           this.calculateReportTotals();
@@ -1740,46 +1732,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onReportFilterTypeChange(type: 'month' | 'year'): void {
     this.reportFilterType = type;
-    // フィルタータイプに応じて適切な値を設定
-    if (type === 'month') {
-      // 月フィルターに切り替えた場合
-      if (this.reportTableType === 'salary') {
-        if (this.availableMonths.length > 0) {
-          this.reportSelectedMonth = this.availableMonths[0];
-        } else {
-          this.reportSelectedMonth = '';
-        }
-      } else {
-        if (this.availableBonusMonths.length > 0) {
-          this.reportSelectedMonth = this.availableBonusMonths[0];
-        } else {
-          this.reportSelectedMonth = '';
-        }
-      }
-    } else {
-      // 年フィルターに切り替えた場合
-      if (this.reportTableType === 'salary') {
-        if (this.availableYears.length > 0) {
-          this.reportSelectedYear = this.availableYears[0];
-        } else {
-          this.reportSelectedYear = '';
-        }
-      } else {
-        if (this.availableBonusYears.length > 0) {
-          this.reportSelectedYear = this.availableBonusYears[0];
-        } else {
-          this.reportSelectedYear = '';
-        }
-      }
-    }
-    this.calculateReportTotals();
+    // フィルタータイプが変更された場合、現在の年月を設定
     setTimeout(() => {
-      this.updateCharts();
-    }, 100);
+      this.setCurrentMonthForReport();
+    }, 0);
   }
 
   onReportMonthChange(month: string): void {
-    this.reportSelectedMonth = month;
+    // ngModelで双方向バインディングされているため、reportSelectedMonthは既に更新されている
+    // 保険料一覧ページの表示月フィルターと連動させる
+    this.selectedMonth = month;
+    
     this.calculateReportTotals();
     setTimeout(() => {
       this.updateCharts();
@@ -1787,7 +1750,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onReportYearChange(year: string): void {
-    this.reportSelectedYear = year;
+    // ngModelで双方向バインディングされているため、reportSelectedYearは既に更新されている
     this.calculateReportTotals();
     setTimeout(() => {
       this.updateCharts();
@@ -1840,6 +1803,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           const month = emp.月 || emp.month;
           return month === this.reportSelectedMonth;
         });
+        
+        // フィルターされたデータの年月を確認して、フィルターに反映
+        if (filteredEmployees.length > 0) {
+          const actualMonth = filteredEmployees[0].月 || filteredEmployees[0].month;
+          if (actualMonth && actualMonth !== this.reportSelectedMonth) {
+            this.reportSelectedMonth = actualMonth;
+            // フィルターが変更されたので、再計算が必要
+            return;
+          }
+        }
       } else {
         // 年単位でフィルタリング（必ずreportSelectedYearが設定されている）
         filteredEmployees = this.reportEmployees.filter(emp => {
@@ -1956,6 +1929,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           const month = bonus.月 || bonus['month'];
           return month === this.reportSelectedMonth;
         });
+        
+        // フィルターされたデータの年月を確認して、フィルターに反映
+        if (filteredBonuses.length > 0) {
+          const actualMonth = filteredBonuses[0].月 || filteredBonuses[0]['month'];
+          if (actualMonth && actualMonth !== this.reportSelectedMonth) {
+            this.reportSelectedMonth = actualMonth;
+            // フィルターが変更されたので、再計算が必要
+            return;
+          }
+        }
       } else {
         // 年単位でフィルタリング（必ずreportSelectedYearが設定されている）
         filteredBonuses = this.reportBonuses.filter(bonus => {

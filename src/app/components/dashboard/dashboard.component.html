@@ -432,8 +432,8 @@
               *ngIf="reportFilterType === 'month'"
               id="report-month-select" 
               class="filter-select"
-              [value]="reportSelectedMonth"
-              (change)="onReportMonthChange($any($event.target).value)">
+              [(ngModel)]="reportSelectedMonth"
+              (ngModelChange)="onReportMonthChange($event)">
               <option *ngFor="let month of (reportTableType === 'salary' ? availableMonths : availableBonusMonths)" [value]="month">
                 {{ month }}
               </option>
@@ -442,8 +442,8 @@
               *ngIf="reportFilterType === 'year'"
               id="report-year-select" 
               class="filter-select"
-              [value]="reportSelectedYear"
-              (change)="onReportYearChange($any($event.target).value)">
+              [(ngModel)]="reportSelectedYear"
+              (ngModelChange)="onReportYearChange($event)">
               <option *ngFor="let year of (reportTableType === 'salary' ? availableYears : availableBonusYears)" [value]="year">
                 {{ year }}年
               </option>
