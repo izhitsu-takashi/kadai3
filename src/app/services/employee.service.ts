@@ -10,6 +10,8 @@ export interface Employee {
   氏名?: string;
   給与?: number;
   標準報酬月額?: number;
+  標準報酬月額算出基準給与?: number; // 標準報酬月額算出に使用された給与の平均値または途中入社時の給与
+  標準報酬月額算出方法?: string; // "平均値" または "途中入社時給与"
   標準賞与額?: number;
   等級?: number;
   健康保険料?: number;
@@ -31,6 +33,8 @@ export interface Employee {
   name?: string;
   salary?: number;
   standardSalary?: number;
+  standardSalaryCalculationBase?: number; // 標準報酬月額算出に使用された給与の平均値または途中入社時の給与
+  standardSalaryCalculationMethod?: string; // "average" または "joinDateSalary"
   standardBonus?: number;
   grade?: number;
   healthInsurance?: number;

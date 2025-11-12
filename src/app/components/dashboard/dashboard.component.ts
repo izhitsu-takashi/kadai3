@@ -1140,6 +1140,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const monthNum = this.monthToNumber(currentMonth);
 
     let calculatedStandardSalary: number;
+    let calculationBase: number = 0;
+    let calculationMethod: string = '';
+
+    // 標準報酬月額算出に使用された給与の情報を取得
+    const calculationInfo = this.getStandardSalaryCalculationInfo(employee);
+    calculationBase = calculationInfo.baseSalary;
+    calculationMethod = calculationInfo.method;
 
     // 2024年4月～2025年9月の場合：2024年4~6月の給与の平均値を使用
     if (monthNum >= 202404 && monthNum <= 202509) {
@@ -1152,6 +1159,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // その他の期間の場合は、現在の給与を標準報酬月額とする
     else {
       calculatedStandardSalary = salary;
+      calculationBase = salary;
+      calculationMethod = '現在の給与';
+    }
+    
+    // 標準報酬月額算出に使用された給与の情報を従業員データに保存
+    if (calculationBase > 0) {
+      (employee as any).標準報酬月額算出基準給与 = calculationBase;
+      (employee as any).standardSalaryCalculationBase = calculationBase;
+      (employee as any).標準報酬月額算出方法 = calculationMethod;
+      (employee as any).standardSalaryCalculationMethod = calculationMethod;
     }
 
     // 等級.jsonを参照して、計算された標準報酬月額がどの範囲に当てはまるかを確認
@@ -1230,6 +1247,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * 指定期間の給与の平均値を計算
    * 4月に所属していなかった場合、新しく追加された際の給与を標準報酬月額とする
+   * @returns {number} 計算された給与の平均値または途中入社時の給与
    */
   private calculateAverageSalaryForPeriod(employeeId: number | string, startMonth: string, endMonth: string, currentMonth: string): number {
     // 該当社員の全期間の給与データを取得
@@ -1288,6 +1306,68 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 0);
 
     return Math.round(totalSalary / periodData.length);
+  }
+  
+  /**
+   * 標準報酬月額算出に使用された給与の情報を取得
+   * @returns {baseSalary: number, method: string} 基準給与と算出方法
+   */
+  private getStandardSalaryCalculationInfo(employee: Employee | Bonus): { baseSalary: number; method: string } {
+    const currentMonth = employee.月 || employee.month;
+    if (!currentMonth) {
+      return { baseSalary: 0, method: '' };
+    }
+
+    const employeeId = this.getEmployeeId(employee);
+    const salary = this.getSalary(employee);
+    const monthNum = this.monthToNumber(currentMonth);
+
+    // 2024年4月～2025年9月の場合：2024年4~6月の給与の平均値を使用
+    if (monthNum >= 202404 && monthNum <= 202509) {
+      const avgSalary = this.calculateAverageSalaryForPeriod(employeeId, '2024年04月', '2024年06月', currentMonth);
+      // 4月に所属していたかチェック
+      const employeeData = this.allEmployeesData.filter(emp => {
+        const id = this.getEmployeeId(emp);
+        return id === employeeId;
+      });
+      const hasAprilData = employeeData.some(emp => {
+        const month = emp.月 || emp.month;
+        if (!month) return false;
+        const monthNum = this.monthToNumber(month);
+        return monthNum === 202404;
+      });
+      
+      if (hasAprilData) {
+        return { baseSalary: avgSalary, method: '平均値' };
+      } else {
+        return { baseSalary: avgSalary, method: '途中入社時給与' };
+      }
+    }
+    // 2025年10月～2026年3月の場合：2025年4~6月の給与の平均値を使用
+    else if (monthNum >= 202510 && monthNum <= 202603) {
+      const avgSalary = this.calculateAverageSalaryForPeriod(employeeId, '2025年04月', '2025年06月', currentMonth);
+      // 4月に所属していたかチェック
+      const employeeData = this.allEmployeesData.filter(emp => {
+        const id = this.getEmployeeId(emp);
+        return id === employeeId;
+      });
+      const hasAprilData = employeeData.some(emp => {
+        const month = emp.月 || emp.month;
+        if (!month) return false;
+        const monthNum = this.monthToNumber(month);
+        return monthNum === 202504;
+      });
+      
+      if (hasAprilData) {
+        return { baseSalary: avgSalary, method: '平均値' };
+      } else {
+        return { baseSalary: avgSalary, method: '途中入社時給与' };
+      }
+    }
+    // その他の期間の場合は、現在の給与を標準報酬月額とする
+    else {
+      return { baseSalary: salary, method: '現在の給与' };
+    }
   }
 
   getStandardBonus(employee: Employee | Bonus): number {
@@ -1749,6 +1829,26 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedEmployee = null;
   }
 
+
+  /**
+   * 標準報酬月額算出に使用された給与の基準額を取得
+   */
+  getStandardSalaryCalculationBase(employee: Employee | Bonus): number {
+    if (!employee) {
+      return 0;
+    }
+    return (employee as any).標準報酬月額算出基準給与 ?? (employee as any).standardSalaryCalculationBase ?? 0;
+  }
+  
+  /**
+   * 標準報酬月額算出方法を取得
+   */
+  getStandardSalaryCalculationMethod(employee: Employee | Bonus): string {
+    if (!employee) {
+      return '';
+    }
+    return (employee as any).標準報酬月額算出方法 ?? (employee as any).standardSalaryCalculationMethod ?? '';
+  }
 
   getEmployeeField(employee: Employee | Bonus, field: string): any {
     if (!employee) {

@@ -657,6 +657,10 @@
           <span class="info-label">標準報酬月額</span>
           <span class="info-value">{{ getStandardSalary(selectedEmployee) | number }}円</span>
         </div>
+        <div class="info-row" *ngIf="tableType === 'salary' && getStandardSalaryCalculationBase(selectedEmployee) > 0">
+          <span class="info-label">標準報酬月額算出基準給与</span>
+          <span class="info-value">{{ getStandardSalaryCalculationBase(selectedEmployee) | number }}円（{{ getStandardSalaryCalculationMethod(selectedEmployee) }}）</span>
+        </div>
         <div class="info-row" *ngIf="tableType === 'bonus'">
           <span class="info-label">標準賞与額</span>
           <span class="info-value">{{ getStandardBonus(selectedEmployee) | number }}円</span>
