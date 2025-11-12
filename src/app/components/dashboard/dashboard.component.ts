@@ -359,6 +359,74 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     return 0;
   }
+  
+  /**
+   * 等級設定タイプが変更されたときの処理
+   */
+  onGradeSettingTypeChange(): void {
+    // カスタムの場合、選択された等級の標準報酬月額を更新
+    if (this.gradeSettingType === 'custom') {
+      const gradeInfo = this.gradeData.find(item => item.grade === this.customMaxGrade);
+      if (gradeInfo) {
+        this.customMaxGradeStandardSalary = gradeInfo.monthlyStandard;
+      }
+    }
+    
+    // 保険料一覧テーブルを再計算（自動保存はしない）
+    this.recalculateInsuranceTable();
+  }
+  
+  /**
+   * カスタム最大等級が変更されたときの処理
+   */
+  onCustomMaxGradeChange(): void {
+    // 選択された等級の標準報酬月額を更新
+    const gradeInfo = this.gradeData.find(item => item.grade === this.customMaxGrade);
+    if (gradeInfo) {
+      this.customMaxGradeStandardSalary = gradeInfo.monthlyStandard;
+    }
+    
+    // 保険料一覧テーブルを再計算（自動保存はしない）
+    this.recalculateInsuranceTable();
+  }
+  
+  /**
+   * 年間標準賞与額上限タイプが変更されたときの処理
+   */
+  onAnnualBonusLimitTypeChange(): void {
+    // 設定を自動保存
+    this.autoSaveHealthInsurance();
+    
+    // 保険料一覧テーブルを再計算（賞与テーブルの場合）
+    if (this.tableType === 'bonus') {
+      this.loadBonuses();
+    }
+  }
+  
+  /**
+   * カスタム年間標準賞与額上限が変更されたときの処理
+   */
+  onCustomAnnualBonusLimitChange(): void {
+    // 設定を自動保存
+    this.autoSaveHealthInsurance();
+    
+    // 保険料一覧テーブルを再計算（賞与テーブルの場合）
+    if (this.tableType === 'bonus') {
+      this.loadBonuses();
+    }
+  }
+  
+  /**
+   * 保険料一覧テーブルを再計算する
+   */
+  private recalculateInsuranceTable(): void {
+    // 現在のテーブルタイプに応じてデータを再読み込み
+    if (this.tableType === 'salary') {
+      this.loadEmployees();
+    } else if (this.tableType === 'bonus') {
+      this.loadBonuses();
+    }
+  }
 
   /**
    * 現在の年月を "YYYY年MM月" 形式で取得
@@ -1089,12 +1157,29 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 等級.jsonを参照して、計算された標準報酬月額がどの範囲に当てはまるかを確認
     // 当てはまった部分のmonthlyStandardの値を標準報酬月額として返す
     if (this.gradeData.length > 0 && calculatedStandardSalary > 0) {
-      // 協会けんぽの場合、標準報酬月額の最大値を139万円に制限
-      if (this.healthInsuranceType === 'kyokai') {
-        const maxStandardSalary = 1390000; // 139万円
-        if (calculatedStandardSalary > maxStandardSalary) {
-          calculatedStandardSalary = maxStandardSalary;
+      // 標準報酬月額の最大値を設定に応じて制限
+      let maxStandardSalary: number;
+      if (this.healthInsuranceType === 'kumiai') {
+        // 組合保険の場合、等級設定に応じて最大値を決定
+        if (this.gradeSettingType === 'kyokai') {
+          // 協会けんぽに従う場合、139万円
+          maxStandardSalary = 1390000;
+        } else if (this.gradeSettingType === 'custom') {
+          // カスタムの場合、選択された等級の標準報酬月額を上限とする
+          const customGradeInfo = this.gradeData.find(grade => grade.grade === this.customMaxGrade);
+          maxStandardSalary = customGradeInfo ? customGradeInfo.monthlyStandard : 1390000;
+        } else {
+          maxStandardSalary = 1390000;
         }
+      } else if (this.healthInsuranceType === 'kyokai') {
+        // 協会けんぽの場合、139万円
+        maxStandardSalary = 1390000;
+      } else {
+        maxStandardSalary = 9999999; // 制限なし
+      }
+      
+      if (calculatedStandardSalary > maxStandardSalary) {
+        calculatedStandardSalary = maxStandardSalary;
       }
 
       const matchedGrade = this.gradeData.find(grade => {
@@ -1104,12 +1189,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       if (matchedGrade) {
         let standardSalary = matchedGrade.monthlyStandard;
         
-        // 協会けんぽの場合、標準報酬月額の最大値を139万円に制限
-        if (this.healthInsuranceType === 'kyokai') {
-          const maxStandardSalary = 1390000; // 139万円
-          if (standardSalary > maxStandardSalary) {
-            standardSalary = maxStandardSalary;
-          }
+        // 標準報酬月額の最大値を設定に応じて制限
+        if (standardSalary > maxStandardSalary) {
+          standardSalary = maxStandardSalary;
         }
         
         return standardSalary;
@@ -1117,12 +1199,29 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // 等級データが読み込まれていない場合や、範囲に当てはまらない場合は計算値を返す
-    // 協会けんぽの場合、標準報酬月額の最大値を139万円に制限
-    if (this.healthInsuranceType === 'kyokai') {
-      const maxStandardSalary = 1390000; // 139万円
-      if (calculatedStandardSalary > maxStandardSalary) {
-        return maxStandardSalary;
+    // 標準報酬月額の最大値を設定に応じて制限
+    let maxStandardSalary: number;
+    if (this.healthInsuranceType === 'kumiai') {
+      // 組合保険の場合、等級設定に応じて最大値を決定
+      if (this.gradeSettingType === 'kyokai') {
+        // 協会けんぽに従う場合、139万円
+        maxStandardSalary = 1390000;
+      } else if (this.gradeSettingType === 'custom') {
+        // カスタムの場合、選択された等級の標準報酬月額を上限とする
+        const customGradeInfo = this.gradeData.find(grade => grade.grade === this.customMaxGrade);
+        maxStandardSalary = customGradeInfo ? customGradeInfo.monthlyStandard : 1390000;
+      } else {
+        maxStandardSalary = 1390000;
       }
+    } else if (this.healthInsuranceType === 'kyokai') {
+      // 協会けんぽの場合、139万円
+      maxStandardSalary = 1390000;
+    } else {
+      maxStandardSalary = 9999999; // 制限なし
+    }
+    
+    if (calculatedStandardSalary > maxStandardSalary) {
+      return maxStandardSalary;
     }
     
     return calculatedStandardSalary;
@@ -1244,9 +1343,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       if (matchedGrade) {
         let gradeValue = matchedGrade.grade;
         
-        // 協会けんぽの場合、等級の最大値を50に制限
-        if (this.healthInsuranceType === 'kyokai' && gradeValue > 50) {
-          gradeValue = 50;
+        // 等級の最大値を設定に応じて制限
+        if (this.healthInsuranceType === 'kumiai') {
+          // 組合保険の場合、等級設定に応じて最大等級を制限
+          if (this.gradeSettingType === 'kyokai') {
+            // 協会けんぽに従う場合、最大等級を50に制限
+            if (gradeValue > 50) {
+              gradeValue = 50;
+            }
+          } else if (this.gradeSettingType === 'custom') {
+            // カスタムの場合、設定された最大等級を制限
+            if (gradeValue > this.customMaxGrade) {
+              gradeValue = this.customMaxGrade;
+            }
+          }
+        } else if (this.healthInsuranceType === 'kyokai') {
+          // 協会けんぽの場合、等級の最大値を50に制限
+          if (gradeValue > 50) {
+            gradeValue = 50;
+          }
         }
         
         return gradeValue;
@@ -1255,13 +1370,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // monthlyStandardで見つからない場合、計算された標準報酬月額（給与の平均値）から等級を検索
       const calculatedStandardSalary = this.getCalculatedStandardSalary(employee);
       if (calculatedStandardSalary > 0) {
-        // 協会けんぽの場合、計算された標準報酬月額の最大値を139万円に制限
+        // 標準報酬月額の最大値を設定に応じて制限
         let searchSalary = calculatedStandardSalary;
-        if (this.healthInsuranceType === 'kyokai') {
-          const maxStandardSalary = 1390000; // 139万円
-          if (searchSalary > maxStandardSalary) {
-            searchSalary = maxStandardSalary;
+        let maxStandardSalary: number;
+        if (this.healthInsuranceType === 'kumiai') {
+          // 組合保険の場合、等級設定に応じて最大値を決定
+          if (this.gradeSettingType === 'kyokai') {
+            // 協会けんぽに従う場合、139万円
+            maxStandardSalary = 1390000;
+          } else if (this.gradeSettingType === 'custom') {
+            // カスタムの場合、選択された等級の標準報酬月額を上限とする
+            const customGradeInfo = this.gradeData.find(grade => grade.grade === this.customMaxGrade);
+            maxStandardSalary = customGradeInfo ? customGradeInfo.monthlyStandard : 1390000;
+          } else {
+            maxStandardSalary = 1390000;
           }
+        } else if (this.healthInsuranceType === 'kyokai') {
+          // 協会けんぽの場合、139万円
+          maxStandardSalary = 1390000;
+        } else {
+          maxStandardSalary = 9999999; // 制限なし
+        }
+        
+        if (searchSalary > maxStandardSalary) {
+          searchSalary = maxStandardSalary;
         }
         
         const matchedGradeByRange = this.gradeData.find(grade => {
@@ -1271,9 +1403,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         if (matchedGradeByRange) {
           let gradeValue = matchedGradeByRange.grade;
           
-          // 協会けんぽの場合、等級の最大値を50に制限
-          if (this.healthInsuranceType === 'kyokai' && gradeValue > 50) {
-            gradeValue = 50;
+          // 等級の最大値を設定に応じて制限
+          if (this.healthInsuranceType === 'kumiai') {
+            // 組合保険の場合、等級設定に応じて最大等級を制限
+            if (this.gradeSettingType === 'kyokai') {
+              // 協会けんぽに従う場合、最大等級を50に制限
+              if (gradeValue > 50) {
+                gradeValue = 50;
+              }
+            } else if (this.gradeSettingType === 'custom') {
+              // カスタムの場合、設定された最大等級を制限
+              if (gradeValue > this.customMaxGrade) {
+                gradeValue = this.customMaxGrade;
+              }
+            }
+          } else if (this.healthInsuranceType === 'kyokai') {
+            // 協会けんぽの場合、等級の最大値を50に制限
+            if (gradeValue > 50) {
+              gradeValue = 50;
+            }
           }
           
           return gradeValue;
@@ -1316,7 +1464,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
     let baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
     
-    // 賞与の場合、年間の課税される対象の標準賞与額を573万円に制限
+    // 賞与の場合、年間の課税される対象の標準賞与額を制限
     if (isBonus) {
       const currentMonth = employee.月 || employee.month;
       if (currentMonth) {
@@ -1325,8 +1473,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         const employeeId = this.getEmployeeId(employee);
         const yearTotal = this.calculateYearlyBonusTotal(employeeId, year, employee);
         
-        // 年間の上限は573万円
-        const maxYearlyTotal = 5730000;
+        // 年間の上限を設定に応じて決定
+        let maxYearlyTotal: number;
+        if (this.healthInsuranceType === 'kumiai') {
+          // 組合保険の場合、設定に応じて上限を決定
+          if (this.annualBonusLimitType === 'kyokai') {
+            // 協会けんぽに従う場合、573万円
+            maxYearlyTotal = 5730000;
+          } else {
+            // カスタムの場合、設定された上限（万円単位なので10000倍）
+            maxYearlyTotal = this.customAnnualBonusLimit * 10000;
+          }
+        } else {
+          // 協会けんぽの場合、573万円
+          maxYearlyTotal = 5730000;
+        }
         
         // 累計が上限を超える場合、現在の賞与から使える分だけを計算
         if (yearTotal >= maxYearlyTotal) {
@@ -2443,8 +2604,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.prefecture = data['prefecture'] || '';
         this.insuranceRate = data['insuranceRate'] || 0;
         this.insuranceRateDisplay = this.insuranceRate > 0 ? this.insuranceRate.toString() : '';
-        this.healthInsuranceReduction = data['healthInsuranceReduction'] || 0;
-        this.healthInsuranceReductionDisplay = this.healthInsuranceReduction > 0 ? this.healthInsuranceReduction.toString() : '';
+        this.healthInsuranceReduction = data['healthInsuranceReduction'] !== undefined ? (data['healthInsuranceReduction'] || 0) : 0;
+        // 0の場合も「0」と表示する
+        this.healthInsuranceReductionDisplay = (this.healthInsuranceReduction !== undefined && this.healthInsuranceReduction !== null) ? this.healthInsuranceReduction.toString() : '0';
+        
+        // 組合保険設定を読み込み
+        this.gradeSettingType = data['gradeSettingType'] || 'kyokai';
+        this.customMaxGrade = data['customMaxGrade'] || 50;
+        this.annualBonusLimitType = data['annualBonusLimitType'] || 'kyokai';
+        this.customAnnualBonusLimit = data['customAnnualBonusLimit'] || 573;
+        
+        // カスタム最大等級の標準報酬月額を更新
+        if (this.gradeSettingType === 'custom' && this.gradeData.length > 0) {
+          const gradeInfo = this.gradeData.find(item => item.grade === this.customMaxGrade);
+          if (gradeInfo) {
+            this.customMaxGradeStandardSalary = gradeInfo.monthlyStandard;
+          }
+        }
         
         // 前の値を更新
         this.previousHealthInsuranceType = this.healthInsuranceType;
@@ -2466,6 +2642,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.loadEmployees();
           // レポートデータも再計算
           this.loadReportData();
+        }
+        
+        // 等級設定が読み込まれた後、テーブルを再計算（等級設定が変更されている可能性があるため）
+        if (this.healthInsuranceType === 'kumiai') {
+          // テーブルデータを再読み込み（表示を更新）
+          this.loadEmployees();
+          this.loadBonuses();
         }
       }
     } catch (error) {
@@ -2490,10 +2673,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       
-      // 引き下げ額の空白チェック
+      // 引き下げ額の空白チェック（空白の場合は0に設定）
       if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
-        alert('保険料引き下げ額を入力してください');
-        return;
+        this.healthInsuranceReduction = 0;
+        this.healthInsuranceReductionDisplay = '';
+      } else {
+        // 表示値から数値を取得（空でない場合）
+        const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
+        if (!isNaN(numValue)) {
+          this.healthInsuranceReduction = numValue;
+        } else {
+          this.healthInsuranceReduction = 0;
+        }
       }
       
       // 範囲チェック
@@ -2506,6 +2697,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.healthInsuranceType === 'kyokai' && !this.prefecture) {
       alert('都道府県を選択してください');
       return;
+    }
+    
+    // 引き下げ額の最終確認（組合保険でない場合も含む）
+    if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
+      this.healthInsuranceReduction = 0;
+    } else {
+      const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
+      if (!isNaN(numValue)) {
+        this.healthInsuranceReduction = numValue;
+      } else {
+        this.healthInsuranceReduction = 0;
+      }
     }
     
     const db = this.firestoreService.getFirestore();
@@ -2541,15 +2744,25 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
       
-      // Firestoreに保存
+      // Firestoreに保存（引き下げ額は必ず0以上の数値として保存）
       const docRef = doc(db, 'healthInsuranceSettings', 'settings');
-      await setDoc(docRef, {
+      const saveData: any = {
         type: this.healthInsuranceType,
         prefecture: this.prefecture,
         insuranceRate: this.insuranceRate,
-        healthInsuranceReduction: this.healthInsuranceReduction,
+        healthInsuranceReduction: (this.healthInsuranceReduction !== undefined && this.healthInsuranceReduction !== null) ? Math.max(0, this.healthInsuranceReduction) : 0,
         updatedAt: new Date()
-      }, { merge: true });
+      };
+      
+      // 組合保険の場合、等級設定も保存
+      if (this.healthInsuranceType === 'kumiai') {
+        saveData.gradeSettingType = this.gradeSettingType;
+        saveData.customMaxGrade = this.customMaxGrade;
+        saveData.annualBonusLimitType = this.annualBonusLimitType;
+        saveData.customAnnualBonusLimit = this.customAnnualBonusLimit;
+      }
+      
+      await setDoc(docRef, saveData, { merge: true });
 
       // 前の値を更新
       this.previousHealthInsuranceType = this.healthInsuranceType;
@@ -2738,9 +2951,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // フォーカスが外れた時に値を正規化
     if (this.healthInsuranceReduction !== null && this.healthInsuranceReduction !== undefined && !isNaN(this.healthInsuranceReduction)) {
       this.healthInsuranceReductionDisplay = this.healthInsuranceReduction.toString();
-    } else if (this.healthInsuranceReductionDisplay === '') {
+    } else if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
       this.healthInsuranceReduction = 0;
-      this.healthInsuranceReductionDisplay = '';
+      this.healthInsuranceReductionDisplay = '0';
     }
   }
 
@@ -3716,15 +3929,38 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
+      // 引き下げ額の最終確認（空の場合は0に設定）
+      let healthInsuranceReductionValue = 0;
+      if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
+        healthInsuranceReductionValue = 0;
+      } else {
+        const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
+        if (!isNaN(numValue) && numValue >= 0) {
+          healthInsuranceReductionValue = numValue;
+        } else {
+          healthInsuranceReductionValue = 0;
+        }
+      }
+      
       // Firestoreに保存
       const docRef = doc(db, 'healthInsuranceSettings', 'settings');
-      await setDoc(docRef, {
+      const saveData: any = {
         type: this.healthInsuranceType,
         prefecture: this.prefecture,
         insuranceRate: this.insuranceRate,
-        healthInsuranceReduction: this.healthInsuranceReduction,
+        healthInsuranceReduction: healthInsuranceReductionValue,
         updatedAt: new Date()
-      }, { merge: true });
+      };
+      
+      // 組合保険の場合、等級設定も保存
+      if (this.healthInsuranceType === 'kumiai') {
+        saveData.gradeSettingType = this.gradeSettingType;
+        saveData.customMaxGrade = this.customMaxGrade;
+        saveData.annualBonusLimitType = this.annualBonusLimitType;
+        saveData.customAnnualBonusLimit = this.customAnnualBonusLimit;
+      }
+      
+      await setDoc(docRef, saveData, { merge: true });
 
       // 前の値を更新
       this.previousHealthInsuranceType = this.healthInsuranceType;
