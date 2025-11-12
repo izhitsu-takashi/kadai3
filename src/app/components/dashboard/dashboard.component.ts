@@ -817,6 +817,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterDepartment = '';
     this.filterNursingInsurance = '';
     
+    // 保険料レポートページが表示されている場合、給与/賞与フィルターを連動させる
+    if (this.selectedMenuId === 'reports') {
+      this.reportTableType = type;
+      setTimeout(() => {
+        this.setCurrentMonthForReport();
+      }, 0);
+    }
+    
     // ページの読み込みが完全に終了したタイミングで現在の年月を設定
     setTimeout(() => {
       this.setCurrentMonthIfAvailable();
@@ -881,6 +889,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // レポートページに切り替えた場合はチャートを更新
       if (menuId === 'reports') {
+        // 保険料一覧ページの給与/賞与フィルターと連動させる
+        this.reportTableType = this.tableType;
         // ページの読み込みが完全に終了した後に現在の年月を設定
         setTimeout(() => {
           this.setCurrentMonthForReport();
@@ -1710,6 +1720,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 現在のタイプと新しいタイプが異なる場合のみ、デフォルト値を設定
     const isTypeChanged = this.reportTableType !== type;
     this.reportTableType = type;
+    
+    // 保険料一覧ページの給与/賞与フィルターと連動させる
+    this.tableType = type;
     
     // タイプが切り替わった場合のみ、月/年をリセット（フィルタータイプに応じて適切な値を設定）
     if (isTypeChanged) {
