@@ -1393,10 +1393,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       } else {
         // 組合保険の場合
         if (this.gradeSettingType === 'custom') {
-          // カスタム設定の場合：customMaxGradeを使用
+          // カスタム設定の場合：協会けんぽと同じロジックを使用
+          // カスタム最大等級を設定し、等級.jsonから対応する標準報酬月額を取得
           maxGrade = this.customMaxGrade;
-          const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
-          maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+          const maxGradeInfo = this.gradeData.find(grade => Number(grade.grade) === Number(maxGrade));
+          maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円（等級が見つからない場合）
         } else {
           // 協会けんぽに従う場合：最大等級50、最大標準報酬月額139万円
           maxGrade = 50;
@@ -1436,9 +1437,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       // 組合保険の場合
       if (this.gradeSettingType === 'custom') {
-        // カスタム設定の場合：customMaxGradeを使用
-        const maxGradeInfo = this.gradeData.find(grade => grade.grade === this.customMaxGrade);
-        maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+        // カスタム設定の場合：協会けんぽと同じロジックを使用
+        // カスタム最大等級を設定し、等級.jsonから対応する標準報酬月額を取得
+        const maxGradeInfo = this.gradeData.find(grade => Number(grade.grade) === Number(this.customMaxGrade));
+        maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円（等級が見つからない場合）
       } else {
         // 協会けんぽに従う場合：最大標準報酬月額139万円
         const maxGradeInfo = this.gradeData.find(grade => grade.grade === 50);
@@ -1665,10 +1667,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         } else {
           // 組合保険の場合
           if (this.gradeSettingType === 'custom') {
-            // カスタム設定の場合：customMaxGradeを使用
+            // カスタム設定の場合：協会けんぽと同じロジックを使用
+            // カスタム最大等級を設定し、等級.jsonから対応する標準報酬月額を取得
             maxGrade = this.customMaxGrade;
-            const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
-            maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+            const maxGradeInfo = this.gradeData.find(grade => Number(grade.grade) === Number(maxGrade));
+            maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円（等級が見つからない場合）
           } else {
             // 協会けんぽに従う場合：最大等級50、最大標準報酬月額139万円
             maxGrade = 50;
