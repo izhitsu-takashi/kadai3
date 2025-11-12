@@ -363,31 +363,68 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * 等級設定タイプが変更されたときの処理
    */
-  onGradeSettingTypeChange(): void {
+  async onGradeSettingTypeChange(): Promise<void> {
     // カスタムの場合、選択された等級の標準報酬月額を更新
     if (this.gradeSettingType === 'custom') {
       const gradeInfo = this.gradeData.find(item => item.grade === this.customMaxGrade);
       if (gradeInfo) {
         this.customMaxGradeStandardSalary = gradeInfo.monthlyStandard;
       }
+      
+      // 組合保険でカスタム設定の場合、すべての従業員データを再計算
+      if (this.healthInsuranceType === 'kumiai' && this.allEmployeesData.length > 0 && this.gradeData.length > 0) {
+        await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
+        // 更新後にテーブルを再読み込み
+        if (this.tableType === 'salary' && this.selectedMonth) {
+          await this.updateTableFromMemory();
+        } else {
+          this.recalculateInsuranceTable();
+        }
+      } else {
+        // 保険料一覧テーブルを再計算（自動保存はしない）
+        this.recalculateInsuranceTable();
+      }
+    } else {
+      // 協会けんぽに従う場合、すべての従業員データを再計算
+      if (this.healthInsuranceType === 'kumiai' && this.allEmployeesData.length > 0 && this.gradeData.length > 0) {
+        await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
+        // 更新後にテーブルを再読み込み
+        if (this.tableType === 'salary' && this.selectedMonth) {
+          await this.updateTableFromMemory();
+        } else {
+          this.recalculateInsuranceTable();
+        }
+      } else {
+        // 保険料一覧テーブルを再計算（自動保存はしない）
+        this.recalculateInsuranceTable();
+      }
     }
-    
-    // 保険料一覧テーブルを再計算（自動保存はしない）
-    this.recalculateInsuranceTable();
   }
   
   /**
    * カスタム最大等級が変更されたときの処理
    */
-  onCustomMaxGradeChange(): void {
+  async onCustomMaxGradeChange(): Promise<void> {
     // 選択された等級の標準報酬月額を更新
     const gradeInfo = this.gradeData.find(item => item.grade === this.customMaxGrade);
     if (gradeInfo) {
       this.customMaxGradeStandardSalary = gradeInfo.monthlyStandard;
     }
     
-    // 保険料一覧テーブルを再計算（自動保存はしない）
-    this.recalculateInsuranceTable();
+    // 組合保険でカスタム設定の場合、すべての従業員データを再計算
+    if (this.healthInsuranceType === 'kumiai' && this.gradeSettingType === 'custom' && 
+        this.allEmployeesData.length > 0 && this.gradeData.length > 0) {
+      await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
+      // 更新後にテーブルを再読み込み
+      if (this.tableType === 'salary' && this.selectedMonth) {
+        await this.updateTableFromMemory();
+      } else {
+        this.recalculateInsuranceTable();
+      }
+    } else {
+      // 保険料一覧テーブルを再計算（自動保存はしない）
+      this.recalculateInsuranceTable();
+    }
   }
   
   /**
@@ -460,8 +497,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     
-    const maxGrade = this.healthInsuranceType === 'kyokai' ? 50 : 56;
-    console.log(`[RECALC] Starting recalculation with max grade ${maxGrade} (healthInsuranceType: ${this.healthInsuranceType})`);
+    // 健康保険の種類と等級設定に応じて最大等級を決定
+    let maxGrade: number;
+    if (this.healthInsuranceType === 'kyokai') {
+      maxGrade = 50;
+    } else {
+      if (this.gradeSettingType === 'custom') {
+        maxGrade = this.customMaxGrade;
+      } else {
+        maxGrade = 50;
+      }
+    }
+    console.log(`[RECALC] Starting recalculation with max grade ${maxGrade} (healthInsuranceType: ${this.healthInsuranceType}, gradeSettingType: ${this.gradeSettingType})`);
     
     // 一時的にtableTypeをsalaryに設定して標準報酬月額と等級を計算
     const originalTableType = this.tableType;
@@ -557,8 +604,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // すべての更新を実行
       await Promise.all(updatePromises);
       
-      const maxGrade = this.healthInsuranceType === 'kyokai' ? 50 : 56;
-      console.log(`[RECALC] Updated ${updatePromises.length} employees with max grade ${maxGrade} (healthInsuranceType: ${this.healthInsuranceType})`);
+      // 健康保険の種類と等級設定に応じて最大等級を決定
+      let maxGrade: number;
+      if (this.healthInsuranceType === 'kyokai') {
+        maxGrade = 50;
+      } else {
+        if (this.gradeSettingType === 'custom') {
+          maxGrade = this.customMaxGrade;
+        } else {
+          maxGrade = 50;
+        }
+      }
+      console.log(`[RECALC] Updated ${updatePromises.length} employees with max grade ${maxGrade} (healthInsuranceType: ${this.healthInsuranceType}, gradeSettingType: ${this.gradeSettingType})`);
     } catch (error) {
       console.error('Error recalculating employees:', error);
     } finally {
@@ -1334,10 +1391,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
         maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
       } else {
-        // 組合保険の場合：最大等級56、最大標準報酬月額200万円
-        maxGrade = 56;
-        const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
-        maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+        // 組合保険の場合
+        if (this.gradeSettingType === 'custom') {
+          // カスタム設定の場合：customMaxGradeを使用
+          maxGrade = this.customMaxGrade;
+          const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
+          maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+        } else {
+          // 協会けんぽに従う場合：最大等級50、最大標準報酬月額139万円
+          maxGrade = 50;
+          const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
+          maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
+        }
       }
       
       if (calculatedStandardSalary > maxStandardSalary) {
@@ -1369,9 +1434,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       const maxGradeInfo = this.gradeData.find(grade => grade.grade === 50);
       maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
     } else {
-      // 組合保険の場合：最大標準報酬月額200万円
-      const maxGradeInfo = this.gradeData.find(grade => grade.grade === 56);
-      maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+      // 組合保険の場合
+      if (this.gradeSettingType === 'custom') {
+        // カスタム設定の場合：customMaxGradeを使用
+        const maxGradeInfo = this.gradeData.find(grade => grade.grade === this.customMaxGrade);
+        maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+      } else {
+        // 協会けんぽに従う場合：最大標準報酬月額139万円
+        const maxGradeInfo = this.gradeData.find(grade => grade.grade === 50);
+        maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
+      }
     }
     
     if (calculatedStandardSalary > maxStandardSalary) {
@@ -1561,8 +1633,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           // 協会けんぽの場合：最大等級50
           maxGrade = 50;
         } else {
-          // 組合保険の場合：最大等級56
-          maxGrade = 56;
+          // 組合保険の場合
+          if (this.gradeSettingType === 'custom') {
+            // カスタム設定の場合：customMaxGradeを使用
+            maxGrade = this.customMaxGrade;
+          } else {
+            // 協会けんぽに従う場合：最大等級50
+            maxGrade = 50;
+          }
         }
         
         if (gradeValue > maxGrade) {
@@ -1585,10 +1663,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
           maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
         } else {
-          // 組合保険の場合：最大等級56、最大標準報酬月額200万円
-          maxGrade = 56;
-          const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
-          maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+          // 組合保険の場合
+          if (this.gradeSettingType === 'custom') {
+            // カスタム設定の場合：customMaxGradeを使用
+            maxGrade = this.customMaxGrade;
+            const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
+            maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 2000000; // デフォルト200万円
+          } else {
+            // 協会けんぽに従う場合：最大等級50、最大標準報酬月額139万円
+            maxGrade = 50;
+            const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
+            maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
+          }
         }
         
         let searchSalary = calculatedStandardSalary;
