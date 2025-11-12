@@ -886,6 +886,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.isLoading = true;
+    // テーブルを非表示にするために、データを空にする
+    this.employees = [];
+    this.cdr.detectChanges();
     // 必ず月を選択する必要がある
     if (!this.selectedMonth && this.availableMonths.length > 0) {
       this.selectedMonth = this.availableMonths[0];
@@ -895,11 +898,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.employees = data;
         this.updateFilterOptions(data);
         this.applyFilters();
-        this.isLoading = false;
+        // テーブルの描画が完了するまで待機
+        this.cdr.detectChanges();
+        // SSR環境ではrequestAnimationFrameが利用できないため、フォールバック処理を追加
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              this.isLoading = false;
+              this.cdr.detectChanges();
+            });
+          });
+        } else {
+          // サーバー環境ではsetTimeoutを使用
+          setTimeout(() => {
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          }, 0);
+        }
       },
       error: (error) => {
         console.error('Error loading employees:', error);
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -909,6 +929,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.isLoading = true;
+    // テーブルを非表示にするために、データを空にする
+    this.bonuses = [];
+    this.cdr.detectChanges();
     // 必ず月を選択する必要がある
     if (!this.selectedMonth && this.availableBonusMonths.length > 0) {
       this.selectedMonth = this.availableBonusMonths[0];
@@ -918,11 +941,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.bonuses = data;
         this.updateFilterOptions(data);
         this.applyBonusFilters();
-        this.isLoading = false;
+        // テーブルの描画が完了するまで待機
+        this.cdr.detectChanges();
+        // SSR環境ではrequestAnimationFrameが利用できないため、フォールバック処理を追加
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              this.isLoading = false;
+              this.cdr.detectChanges();
+            });
+          });
+        } else {
+          // サーバー環境ではsetTimeoutを使用
+          setTimeout(() => {
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          }, 0);
+        }
       },
       error: (error) => {
         console.error('Error loading bonuses:', error);
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
