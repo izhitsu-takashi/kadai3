@@ -318,6 +318,90 @@
               </div>
             </div>
 
+            <!-- 組合保険の場合の等級設定 -->
+            <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
+              <label class="form-label">等級</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="gradeSettingType" 
+                    value="kyokai"
+                    [(ngModel)]="gradeSettingType"
+                    [disabled]="!isHealthInsuranceEditing">
+                  <span>協会けんぽに従う</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="gradeSettingType" 
+                    value="custom"
+                    [(ngModel)]="gradeSettingType"
+                    [disabled]="!isHealthInsuranceEditing">
+                  <span>カスタム</span>
+                </label>
+              </div>
+              
+              <!-- カスタムの場合の等級上限選択 -->
+              <div *ngIf="gradeSettingType === 'custom'" class="form-group" style="margin-top: 15px;">
+                <label for="customMaxGrade" class="form-label">最大等級</label>
+                <select 
+                  id="customMaxGrade" 
+                  class="form-select"
+                  [(ngModel)]="customMaxGrade"
+                  name="customMaxGrade"
+                  [disabled]="!isHealthInsuranceEditing">
+                  <option *ngFor="let option of customGradeOptions" [value]="option.grade">
+                    {{ option.grade }}等級（標準報酬月額上限{{ getMonthlyStandardByGrade(option.grade) }}万円）
+                  </option>
+                </select>
+                <div *ngIf="customMaxGradeStandardSalary > 0" class="form-note" style="margin-top: 10px;">
+                  <p>選択した等級の標準報酬月額: {{ customMaxGradeStandardSalary | number }}円</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 組合保険の場合の年間標準賞与額の上限変更 -->
+            <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
+              <label class="form-label">年間標準賞与額の上限変更</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="annualBonusLimitType" 
+                    value="kyokai"
+                    [(ngModel)]="annualBonusLimitType"
+                    [disabled]="!isHealthInsuranceEditing">
+                  <span>協会けんぽに従う</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="annualBonusLimitType" 
+                    value="custom"
+                    [(ngModel)]="annualBonusLimitType"
+                    [disabled]="!isHealthInsuranceEditing">
+                  <span>カスタム</span>
+                </label>
+              </div>
+              
+              <!-- カスタムの場合の年間標準賞与額の上限入力 -->
+              <div *ngIf="annualBonusLimitType === 'custom'" class="form-group" style="margin-top: 15px;">
+                <label for="customAnnualBonusLimit" class="form-label">年間標準賞与額の上限</label>
+                <div class="insurance-rate-input-wrapper">
+                  <input 
+                    type="text" 
+                    id="customAnnualBonusLimit" 
+                    class="form-input"
+                    [(ngModel)]="customAnnualBonusLimit"
+                    name="customAnnualBonusLimit"
+                    [disabled]="!isHealthInsuranceEditing"
+                    placeholder="573">
+                  <span class="percentage-symbol">万円</span>
+                </div>
+              </div>
+            </div>
+
             <div class="form-actions">
               <button 
                 *ngIf="isHealthInsuranceEditing" 

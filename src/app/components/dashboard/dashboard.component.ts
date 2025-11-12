@@ -114,6 +114,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isHealthInsuranceEditing: boolean = true;
   isHealthInsuranceLoaded: boolean = false; // 健康保険設定の読み込み完了フラグ
   
+  // 組合保険設定用
+  gradeSettingType: 'kyokai' | 'custom' = 'kyokai'; // 等級設定タイプ（デフォルト：協会けんぽに従う）
+  customMaxGrade: number = 50; // カスタム最大等級（44~56）
+  customMaxGradeStandardSalary: number = 0; // 選択した等級の標準報酬月額
+  annualBonusLimitType: 'kyokai' | 'custom' = 'kyokai'; // 年間標準賞与額の上限タイプ（デフォルト：協会けんぽに従う）
+  customAnnualBonusLimit: number = 573; // カスタム年間標準賞与額の上限（万円、デフォルト：573）
+  
+  // 等級44~56のリスト（表示用）
+  customGradeOptions: Array<{ grade: number; monthlyStandard: number }> = [];
+  
   // 協会けんぽの都道府県別保険料率
   kenpoRates: { [key: string]: { healthRate: number; careRate: number } } = {};
   
@@ -326,12 +336,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.http.get<{ hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> }>('/assets/等級.json').subscribe({
       next: (data: { hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> }) => {
         this.gradeData = data.hyouzyungetugakuReiwa7 || [];
+        // 等級44~56のリストを作成（表示用）
+        this.customGradeOptions = data.hyouzyungetugakuReiwa7
+          .filter(item => item.grade >= 44 && item.grade <= 56)
+          .map(item => ({ grade: item.grade, monthlyStandard: item.monthlyStandard }));
       },
       error: (error: any) => {
         console.error('Error loading grade data:', error);
         this.gradeData = [];
+        this.customGradeOptions = [];
       }
     });
+  }
+  
+  /**
+   * 等級から標準報酬月額を取得（万円単位で返す）
+   */
+  getMonthlyStandardByGrade(grade: number): number {
+    const gradeInfo = this.gradeData.find(item => item.grade === grade);
+    if (gradeInfo) {
+      return Math.floor(gradeInfo.monthlyStandard / 10000); // 万円単位に変換
+    }
+    return 0;
   }
 
   /**
