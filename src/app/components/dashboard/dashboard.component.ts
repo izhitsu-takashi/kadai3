@@ -1724,46 +1724,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 保険料一覧ページの給与/賞与フィルターと連動させる
     this.tableType = type;
     
-    // タイプが切り替わった場合のみ、月/年をリセット（フィルタータイプに応じて適切な値を設定）
+    // タイプが切り替わった場合、現在の年月を設定
     if (isTypeChanged) {
-      if (this.reportFilterType === 'month') {
-        // 月フィルターの場合
-        if (type === 'salary') {
-          if (this.availableMonths.length > 0) {
-            this.reportSelectedMonth = this.availableMonths[0];
-          } else {
-            this.reportSelectedMonth = '';
-          }
-        } else {
-          if (this.availableBonusMonths.length > 0) {
-            this.reportSelectedMonth = this.availableBonusMonths[0];
-          } else {
-            this.reportSelectedMonth = '';
-          }
-        }
-      } else {
-        // 年フィルターの場合
-        if (type === 'salary') {
-          if (this.availableYears.length > 0) {
-            this.reportSelectedYear = this.availableYears[0];
-          } else {
-            this.reportSelectedYear = '';
-          }
-        } else {
-          if (this.availableBonusYears.length > 0) {
-            this.reportSelectedYear = this.availableBonusYears[0];
-          } else {
-            this.reportSelectedYear = '';
-          }
-        }
-      }
+      setTimeout(() => {
+        this.setCurrentMonthForReport();
+      }, 0);
+    } else {
+      // タイプが変わらなかった場合でも、計算とグラフ更新を実行
+      this.calculateReportTotals();
+      setTimeout(() => {
+        this.updateCharts();
+      }, 100);
     }
-    // タイプが変わらなかった場合は、現在のreportSelectedMonth/reportSelectedYearを維持
-    
-    this.calculateReportTotals();
-    setTimeout(() => {
-      this.updateCharts();
-    }, 100);
   }
 
   onReportFilterTypeChange(type: 'month' | 'year'): void {
