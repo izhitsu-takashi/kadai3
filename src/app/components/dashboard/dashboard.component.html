@@ -13,7 +13,7 @@
         <button 
           class="logout-button" 
           type="button"
-          [disabled]="isLoggingOut"
+          [disabled]="isLoggingOut || isHealthInsuranceSaving"
           (click)="onLogout()">
           {{ isLoggingOut ? 'ログアウト中' : 'ログアウト' }}
         </button>
@@ -241,7 +241,7 @@
                     name="healthInsuranceType" 
                     value="kyokai"
                     [(ngModel)]="healthInsuranceType"
-                    [disabled]="!isHealthInsuranceEditing"
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
                     (change)="onHealthInsuranceTypeChange('kyokai')">
                   <span>協会けんぽ</span>
                 </label>
@@ -251,7 +251,7 @@
                     name="healthInsuranceType" 
                     value="kumiai"
                     [(ngModel)]="healthInsuranceType"
-                    [disabled]="!isHealthInsuranceEditing"
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
                     (change)="onHealthInsuranceTypeChange('kumiai')">
                   <span>組合保険</span>
                 </label>
@@ -261,12 +261,12 @@
             <!-- 協会けんぽの場合のフォーム -->
             <div *ngIf="healthInsuranceType === 'kyokai'" class="form-group">
               <label for="prefecture" class="form-label">都道府県</label>
-              <select 
+                <select 
                 id="prefecture" 
                 class="form-select"
                 [(ngModel)]="prefecture"
                 name="prefecture"
-                [disabled]="!isHealthInsuranceEditing">
+                [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
                 <option value="">都道府県を選択してください</option>
                 <option *ngFor="let pref of prefectures" [value]="pref">
                   {{ pref }}
@@ -285,7 +285,7 @@
                   [class.error]="insuranceRateError"
                   [value]="insuranceRateDisplay"
                   name="insuranceRate"
-                  [disabled]="!isHealthInsuranceEditing"
+                  [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
                   placeholder="保険料率を入力"
                   (input)="onInsuranceRateInput($event)"
                   (blur)="onInsuranceRateBlur()">
@@ -307,7 +307,7 @@
                   [class.error]="healthInsuranceReductionError"
                   [value]="healthInsuranceReductionDisplay"
                   name="healthInsuranceReduction"
-                  [disabled]="!isHealthInsuranceEditing"
+                  [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
                   placeholder="引き下げ額を入力"
                   (input)="onHealthInsuranceReductionInput($event)"
                   (blur)="onHealthInsuranceReductionBlur()">
@@ -329,7 +329,7 @@
                     value="kyokai"
                     [(ngModel)]="gradeSettingType"
                     (ngModelChange)="onGradeSettingTypeChange()"
-                    [disabled]="!isHealthInsuranceEditing">
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
                   <span>協会けんぽに従う</span>
                 </label>
                 <label class="radio-label">
@@ -339,7 +339,7 @@
                     value="custom"
                     [(ngModel)]="gradeSettingType"
                     (ngModelChange)="onGradeSettingTypeChange()"
-                    [disabled]="!isHealthInsuranceEditing">
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
                   <span>カスタム</span>
                 </label>
               </div>
@@ -353,7 +353,7 @@
                   [(ngModel)]="customMaxGrade"
                   (ngModelChange)="onCustomMaxGradeChange()"
                   name="customMaxGrade"
-                  [disabled]="!isHealthInsuranceEditing">
+                  [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
                   <option *ngFor="let option of customGradeOptions" [value]="option.grade">
                     {{ option.grade }}等級（標準報酬月額上限{{ getMonthlyStandardByGrade(option.grade) }}万円）
                   </option>
@@ -373,7 +373,7 @@
                     value="kyokai"
                     [(ngModel)]="annualBonusLimitType"
                     (ngModelChange)="onAnnualBonusLimitTypeChange()"
-                    [disabled]="!isHealthInsuranceEditing">
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
                   <span>協会けんぽに従う</span>
                 </label>
                 <label class="radio-label">
@@ -383,7 +383,7 @@
                     value="custom"
                     [(ngModel)]="annualBonusLimitType"
                     (ngModelChange)="onAnnualBonusLimitTypeChange()"
-                    [disabled]="!isHealthInsuranceEditing">
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
                   <span>カスタム</span>
                 </label>
               </div>
@@ -399,7 +399,7 @@
                     [(ngModel)]="customAnnualBonusLimit"
                     (ngModelChange)="onCustomAnnualBonusLimitChange()"
                     name="customAnnualBonusLimit"
-                    [disabled]="!isHealthInsuranceEditing"
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
                     placeholder="573">
                   <span class="percentage-symbol">万円</span>
                 </div>
@@ -410,13 +410,15 @@
               <button 
                 *ngIf="isHealthInsuranceEditing" 
                 type="submit" 
-                class="submit-button">
-                保存
+                class="submit-button"
+                [disabled]="isHealthInsuranceSaving">
+                {{ isHealthInsuranceSaving ? '保存中...' : '保存' }}
               </button>
               <button 
                 *ngIf="!isHealthInsuranceEditing" 
                 type="button" 
                 class="edit-button"
+                [disabled]="isHealthInsuranceSaving"
                 (click)="onEditHealthInsurance()">
                 編集
               </button>
@@ -717,5 +719,12 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 保存中オーバーレイ -->
+<div *ngIf="isHealthInsuranceSaving" class="saving-overlay">
+  <div class="saving-message">
+    <p>保存中...</p>
   </div>
 </div>

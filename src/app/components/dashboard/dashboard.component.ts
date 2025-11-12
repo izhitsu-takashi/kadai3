@@ -113,6 +113,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isHealthInsuranceSaved: boolean = false;
   isHealthInsuranceEditing: boolean = true;
   isHealthInsuranceLoaded: boolean = false; // 健康保険設定の読み込み完了フラグ
+  isHealthInsuranceSaving: boolean = false; // 健康保険設定の保存中フラグ
   
   // 組合保険設定用
   gradeSettingType: 'kyokai' | 'custom' = 'kyokai'; // 等級設定タイプ（デフォルト：協会けんぽに従う）
@@ -972,7 +973,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const departmentsSet = new Set<string>();
     
     data.forEach(item => {
-      const department = (item as any).部署 ?? (item as any).department;
+      // 部署フィールドを取得（所属部署もチェック）
+      let department = (item as any).部署 ?? (item as any).department;
+      if (!department) {
+        department = (item as any).所属部署;
+      }
       
       if (department) {
         departmentsSet.add(department);
@@ -988,7 +993,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 部署でフィルター
     if (this.filterDepartment) {
       filtered = filtered.filter(emp => {
-        const department = (emp as any).部署 ?? (emp as any).department;
+        // 部署フィールドを取得（所属部署もチェック）
+        let department = (emp as any).部署 ?? (emp as any).department;
+        if (!department) {
+          department = (emp as any).所属部署;
+        }
         return department === this.filterDepartment;
       });
     }
@@ -1070,7 +1079,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 部署でフィルター
     if (this.filterDepartment) {
       filtered = filtered.filter(bonus => {
-        const department = (bonus as any).部署 ?? (bonus as any).department;
+        // 部署フィールドを取得（所属部署もチェック）
+        let department = (bonus as any).部署 ?? (bonus as any).department;
+        if (!department) {
+          department = (bonus as any).所属部署;
+        }
         return department === this.filterDepartment;
       });
     }
@@ -3017,19 +3030,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async onHealthInsuranceSubmit(): Promise<void> {
-    // バリデーション
-    if (this.healthInsuranceType === 'kumiai') {
-      // 保険料率のバリデーション
-      if (this.insuranceRate === null || this.insuranceRate === undefined || isNaN(this.insuranceRate) || this.insuranceRate === 0) {
-        alert('保険料率を正しく入力してください');
-        return;
-      }
-      
-      // 空白チェック（保険料率が空白の場合）
-      if (this.insuranceRateDisplay === '' || this.insuranceRateDisplay.trim() === '') {
-        alert('保険料率を入力してください');
-        return;
-      }
+    // 保存中フラグを設定
+    this.isHealthInsuranceSaving = true;
+    
+    try {
+      // バリデーション
+      if (this.healthInsuranceType === 'kumiai') {
+        // 保険料率のバリデーション
+        if (this.insuranceRate === null || this.insuranceRate === undefined || isNaN(this.insuranceRate) || this.insuranceRate === 0) {
+          alert('保険料率を正しく入力してください');
+          return;
+        }
+        
+        // 空白チェック（保険料率が空白の場合）
+        if (this.insuranceRateDisplay === '' || this.insuranceRateDisplay.trim() === '') {
+          alert('保険料率を入力してください');
+          return;
+        }
       
       // 引き下げ額の空白チェック（空白の場合は0に設定）
       if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
@@ -3045,37 +3062,35 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
       
-      // 範囲チェック
-      if (this.insuranceRate < 0 || this.insuranceRate > 13) {
-        alert('保険料率は0〜13%の範囲で入力してください');
+        // 範囲チェック
+        if (this.insuranceRate < 0 || this.insuranceRate > 13) {
+          alert('保険料率は0〜13%の範囲で入力してください');
+          return;
+        }
+      }
+
+      if (this.healthInsuranceType === 'kyokai' && !this.prefecture) {
+        alert('都道府県を選択してください');
         return;
       }
-    }
-
-    if (this.healthInsuranceType === 'kyokai' && !this.prefecture) {
-      alert('都道府県を選択してください');
-      return;
-    }
-    
-    // 引き下げ額の最終確認（組合保険でない場合も含む）
-    if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
-      this.healthInsuranceReduction = 0;
-    } else {
-      const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
-      if (!isNaN(numValue)) {
-        this.healthInsuranceReduction = numValue;
-      } else {
+      
+      // 引き下げ額の最終確認（組合保険でない場合も含む）
+      if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
         this.healthInsuranceReduction = 0;
+      } else {
+        const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
+        if (!isNaN(numValue)) {
+          this.healthInsuranceReduction = numValue;
+        } else {
+          this.healthInsuranceReduction = 0;
+        }
       }
-    }
-    
-    const db = this.firestoreService.getFirestore();
-    if (!db) {
-      alert('Firestoreが初期化されていません');
-      return;
-    }
-
-    try {
+      
+      const db = this.firestoreService.getFirestore();
+      if (!db) {
+        alert('Firestoreが初期化されていません');
+        return;
+      }
       // 変更前の値を保存
       const oldType = this.previousHealthInsuranceType;
       const oldPrefecture = this.previousPrefecture;
@@ -3164,6 +3179,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     } catch (error) {
       console.error('Error saving health insurance settings:', error);
       alert('保存に失敗しました');
+    } finally {
+      // 保存中フラグを解除
+      this.isHealthInsuranceSaving = false;
     }
   }
 
