@@ -1636,7 +1636,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (data) => {
         this.reportEmployees = data;
         
-        // 利用可能な年を取得
+        // 利用可能な年を取得（年度単位：4月～来年3月）
         const yearsSet = new Set<string>();
         data.forEach(emp => {
           const month = emp.月 || emp.month;
@@ -1644,7 +1644,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             // "2025年04月" から "2025" を抽出
             const yearMatch = month.match(/^(\d{4})年/);
             if (yearMatch) {
-              yearsSet.add(yearMatch[1]);
+              const year = yearMatch[1];
+              // 2026年度を除外
+              if (year !== '2026') {
+                yearsSet.add(year);
+              }
             }
           }
         });
@@ -1672,7 +1676,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (data) => {
         this.reportBonuses = data;
         
-        // 利用可能な年を取得
+        // 利用可能な年を取得（年度単位：4月～来年3月）
         const yearsSet = new Set<string>();
         data.forEach(bonus => {
           const month = bonus.月 || bonus['month'];
@@ -1680,7 +1684,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             // "2024年06月" から "2024" を抽出
             const yearMatch = month.match(/^(\d{4})年/);
             if (yearMatch) {
-              yearsSet.add(yearMatch[1]);
+              const year = yearMatch[1];
+              // 2026年度を除外
+              if (year !== '2026') {
+                yearsSet.add(year);
+              }
             }
           }
         });
@@ -1814,14 +1822,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
       } else {
-        // 年単位でフィルタリング（必ずreportSelectedYearが設定されている）
+        // 年度単位でフィルタリング（必ずreportSelectedYearが設定されている）
+        // 選択された年度の4月から翌年の3月までのデータを取得
+        const selectedYear = parseInt(this.reportSelectedYear, 10);
+        const startMonth = `${selectedYear}年04月`;
+        const endMonth = `${selectedYear + 1}年03月`;
+        const startMonthNum = this.monthToNumber(startMonth);
+        const endMonthNum = this.monthToNumber(endMonth);
+        
         filteredEmployees = this.reportEmployees.filter(emp => {
           const month = emp.月 || emp.month;
           if (month) {
-            const yearMatch = month.match(/^(\d{4})年/);
-            if (yearMatch) {
-              return yearMatch[1] === this.reportSelectedYear;
-            }
+            const monthNum = this.monthToNumber(month);
+            // 選択された年度の4月から翌年の3月までのデータを取得
+            return monthNum >= startMonthNum && monthNum <= endMonthNum;
           }
           return false;
         });
@@ -1940,14 +1954,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         }
       } else {
-        // 年単位でフィルタリング（必ずreportSelectedYearが設定されている）
+        // 年度単位でフィルタリング（必ずreportSelectedYearが設定されている）
+        // 選択された年度の4月から翌年の3月までのデータを取得
+        const selectedYear = parseInt(this.reportSelectedYear, 10);
+        const startMonth = `${selectedYear}年04月`;
+        const endMonth = `${selectedYear + 1}年03月`;
+        const startMonthNum = this.monthToNumber(startMonth);
+        const endMonthNum = this.monthToNumber(endMonth);
+        
         filteredBonuses = this.reportBonuses.filter(bonus => {
           const month = bonus.月 || bonus['month'];
           if (month) {
-            const yearMatch = month.match(/^(\d{4})年/);
-            if (yearMatch) {
-              return yearMatch[1] === this.reportSelectedYear;
-            }
+            const monthNum = this.monthToNumber(month);
+            // 選択された年度の4月から翌年の3月までのデータを取得
+            return monthNum >= startMonthNum && monthNum <= endMonthNum;
           }
           return false;
         });

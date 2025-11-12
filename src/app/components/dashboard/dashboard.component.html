@@ -421,13 +421,13 @@
                   value="year"
                   [checked]="reportFilterType === 'year'"
                   (change)="onReportFilterTypeChange('year')">
-                <span>年単位</span>
+                <span>年度単位</span>
               </label>
             </div>
           </div>
           <div class="filter-selector">
             <label *ngIf="reportFilterType === 'month'" for="report-month-select" class="filter-label">表示月:</label>
-            <label *ngIf="reportFilterType === 'year'" for="report-year-select" class="filter-label">表示年:</label>
+            <label *ngIf="reportFilterType === 'year'" for="report-year-select" class="filter-label">表示年度:</label>
             <select 
               *ngIf="reportFilterType === 'month'"
               id="report-month-select" 
@@ -445,7 +445,7 @@
               [(ngModel)]="reportSelectedYear"
               (ngModelChange)="onReportYearChange($event)">
               <option *ngFor="let year of (reportTableType === 'salary' ? availableYears : availableBonusYears)" [value]="year">
-                {{ year }}年
+                {{ year }}年度
               </option>
             </select>
           </div>
