@@ -550,24 +550,8 @@
           <span class="info-value">{{ getEmployeeField(selectedEmployee, '氏名') }}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">役職</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '役職') }}</span>
-        </div>
-        <div class="info-row">
           <span class="info-label">部署</span>
           <span class="info-value">{{ getEmployeeField(selectedEmployee, '部署') }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">生年月日</span>
-          <span class="info-value">{{ formatDate(getEmployeeField(selectedEmployee, '生年月日')) }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">雇用形態</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '雇用形態') }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">勤務地</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '勤務地') }}</span>
         </div>
         <div class="info-row">
           <span class="info-label">年齢</span>
@@ -581,37 +565,37 @@
           <span class="info-label">入社日</span>
           <span class="info-value">{{ formatDate(getEmployeeField(selectedEmployee, '入社日')) }}</span>
         </div>
-        <div class="info-row" *ngIf="!isBonusEmployee(selectedEmployee)">
+        <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">標準報酬月額</span>
           <span class="info-value">{{ getStandardSalary(selectedEmployee) | number }}円</span>
         </div>
-        <div class="info-row" *ngIf="isBonusEmployee(selectedEmployee)">
+        <div class="info-row" *ngIf="tableType === 'bonus'">
           <span class="info-label">標準賞与額</span>
           <span class="info-value">{{ getStandardBonus(selectedEmployee) | number }}円</span>
         </div>
-        <div class="info-row" *ngIf="!isBonusEmployee(selectedEmployee)">
+        <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">等級</span>
           <span class="info-value">{{ getGrade(selectedEmployee) }}</span>
         </div>
         <div class="info-row">
           <span class="info-label">健康保険料</span>
-          <span class="info-value">{{ getHealthInsurance(selectedEmployee, isBonusEmployee(selectedEmployee)) | number }}円</span>
+          <span class="info-value">{{ getHealthInsurance(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">厚生年金保険料</span>
-          <span class="info-value">{{ getWelfarePension(selectedEmployee, isBonusEmployee(selectedEmployee)) | number }}円</span>
+          <span class="info-value">{{ getWelfarePension(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">介護保険料</span>
-          <span class="info-value">{{ getNursingInsurance(selectedEmployee, isBonusEmployee(selectedEmployee)) | number }}円</span>
+          <span class="info-value">{{ getNursingInsurance(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">本人負担額</span>
-          <span class="info-value">{{ getPersonalBurden(selectedEmployee, isBonusEmployee(selectedEmployee)) | number }}円</span>
+          <span class="info-value">{{ getPersonalBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">会社負担額</span>
-          <span class="info-value">{{ getCompanyBurden(selectedEmployee, isBonusEmployee(selectedEmployee)) | number }}円</span>
+          <span class="info-value">{{ getCompanyBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
       </div>
     </div>

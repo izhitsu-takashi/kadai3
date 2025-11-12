@@ -19,6 +19,14 @@ export interface Employee {
   会社負担額?: number;
   月?: string; // 月情報（例: "2025年04月"）
   年齢?: number;
+  役職?: string;
+  部署?: string;
+  所属部署?: string; // 部署の別名
+  生年月日?: string;
+  雇用形態?: string;
+  勤務地?: string;
+  性別?: string;
+  入社日?: string;
   // 英語キーもサポート（後方互換性のため）
   name?: string;
   salary?: number;
@@ -32,6 +40,13 @@ export interface Employee {
   companyBurden?: number;
   month?: string;
   age?: number;
+  position?: string;
+  department?: string;
+  birthDate?: string;
+  employmentType?: string;
+  workLocation?: string;
+  gender?: string;
+  joinDate?: string;
 }
 
 export interface Bonus {
@@ -48,8 +63,23 @@ export interface Bonus {
   会社負担額?: number;
   月?: string; // 月情報（例: "2025年06月"）
   年齢?: number;
+  役職?: string;
+  部署?: string;
+  所属部署?: string; // 部署の別名
+  生年月日?: string;
+  雇用形態?: string;
+  勤務地?: string;
+  性別?: string;
+  入社日?: string;
   // その他のフィールドも必要に応じて追加
   bonus?: number;
+  position?: string;
+  department?: string;
+  birthDate?: string;
+  employmentType?: string;
+  workLocation?: string;
+  gender?: string;
+  joinDate?: string;
   [key: string]: any;
 }
 

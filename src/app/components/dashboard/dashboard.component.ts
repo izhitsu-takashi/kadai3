@@ -1554,8 +1554,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   getEmployeeField(employee: Employee | Bonus, field: string): any {
-    // 日本語キーと英語キーの両方をチェック
-    return (employee as any)[field] ?? (employee as any)[this.getEnglishKey(field)] ?? '-';
+    if (!employee) {
+      return '-';
+    }
+    
+    // 日本語キーをチェック
+    let value = (employee as any)[field];
+    
+    // 部署フィールドの場合、「所属部署」もチェック
+    if (field === '部署' && !value) {
+      value = (employee as any)['所属部署'];
+    }
+    
+    // 英語キーもチェック
+    if (!value) {
+      value = (employee as any)[this.getEnglishKey(field)];
+    }
+    
+    return value ?? '-';
   }
   
   isBonusEmployee(employee: Employee | Bonus | null): boolean {
