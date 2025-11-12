@@ -95,7 +95,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // 企業情報設定用
   companyInfo = {
     companyName: '',
-    address: ''
+    address: '',
+    socialInsuranceCollectionMonth: 'current' as 'current' | 'next' // 社会保険料徴収月（当月/翌月）
   };
   isCompanyInfoSaved: boolean = false;
   isCompanyInfoEditing: boolean = true;
@@ -1311,9 +1312,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // レポートページに切り替えた場合はチャートを更新
       if (stepData.menuId === 'reports') {
+        // レポートデータを再読み込み（念のため）
+        // loadReportData()内でsetCurrentMonthForReport()とcalculateReportTotals()が呼び出されるが、
+        // チュートリアルモードでは確実にチャートを更新するために、追加でupdateCharts()を呼び出す
+        this.loadReportData();
+        // データ読み込みと計算が完了した後にチャートを更新
         setTimeout(() => {
-          this.updateCharts();
-        }, 100);
+          this.setCurrentMonthForReport();
+          setTimeout(() => {
+            this.calculateReportTotals();
+            setTimeout(() => {
+              this.updateCharts();
+            }, 100);
+          }, 100);
+        }, 200);
       }
       
       // 保険料一覧ページに切り替えた場合は、現在の年月を設定
@@ -2797,7 +2809,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         const data = docSnap.data();
         this.companyInfo = {
           companyName: data['companyName'] || '',
-          address: data['address'] || ''
+          address: data['address'] || '',
+          socialInsuranceCollectionMonth: data['socialInsuranceCollectionMonth'] || 'current'
         };
         // データが存在する場合は保存済み状態にする
         if (this.companyInfo.companyName || this.companyInfo.address) {
@@ -2825,6 +2838,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       await setDoc(docRef, {
         companyName: this.companyInfo.companyName,
         address: this.companyInfo.address,
+        socialInsuranceCollectionMonth: this.companyInfo.socialInsuranceCollectionMonth,
         updatedAt: new Date()
       }, { merge: true });
 
@@ -4280,6 +4294,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       await setDoc(docRef, {
         companyName: this.companyInfo.companyName,
         address: this.companyInfo.address,
+        socialInsuranceCollectionMonth: this.companyInfo.socialInsuranceCollectionMonth,
         updatedAt: new Date()
       }, { merge: true });
 

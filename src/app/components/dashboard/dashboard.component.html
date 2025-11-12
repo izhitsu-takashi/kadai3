@@ -210,6 +210,29 @@
                 [disabled]="!isCompanyInfoEditing"
                 placeholder="所在地（住所）を入力してください">
             </div>
+            <div class="form-group">
+              <label class="form-label">社会保険料徴収月</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="socialInsuranceCollectionMonth" 
+                    value="current"
+                    [(ngModel)]="companyInfo.socialInsuranceCollectionMonth"
+                    [disabled]="!isCompanyInfoEditing">
+                  <span>当月</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="socialInsuranceCollectionMonth" 
+                    value="next"
+                    [(ngModel)]="companyInfo.socialInsuranceCollectionMonth"
+                    [disabled]="!isCompanyInfoEditing">
+                  <span>翌月</span>
+                </label>
+              </div>
+            </div>
             <div class="form-actions">
               <button 
                 *ngIf="isCompanyInfoEditing" 
