@@ -167,7 +167,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // フィルター用
   filterDepartment: string = '';
-  filterNursingInsurance: string = ''; // 'all', 'with', 'without'
+  filterNursingInsurance: string = ''; // 介護保険者種別でフィルター
+  filterHealthInsurance: string = ''; // 健康保険者種別でフィルター
+  filterWelfarePension: string = ''; // 厚生年金保険者種別でフィルター
   availableDepartments: string[] = [];
 
   // 書類作成用
@@ -1009,16 +1011,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // 介護保険でフィルター
-    if (this.filterNursingInsurance === 'with') {
+    // 健康保険でフィルター（保険者種別で）
+    if (this.filterHealthInsurance) {
       filtered = filtered.filter(emp => {
-        const nursingInsurance = this.getNursingInsurance(emp);
-        return nursingInsurance > 0;
+        const healthInsuranceType = this.getEmployeeField(emp, '健康保険者種別');
+        return healthInsuranceType === this.filterHealthInsurance;
       });
-    } else if (this.filterNursingInsurance === 'without') {
+    }
+
+    // 介護保険でフィルター（保険者種別で）
+    if (this.filterNursingInsurance) {
       filtered = filtered.filter(emp => {
-        const nursingInsurance = this.getNursingInsurance(emp);
-        return nursingInsurance === 0;
+        // 健康保険が組合保険の場合は「介護保険者種別（組合）」を、それ以外は「介護保険者種別」を参照
+        let nursingInsuranceType: string;
+        if (this.healthInsuranceType === 'kumiai') {
+          nursingInsuranceType = this.getEmployeeField(emp, '介護保険者種別（組合）');
+        } else {
+          nursingInsuranceType = this.getEmployeeField(emp, '介護保険者種別');
+        }
+        return nursingInsuranceType === this.filterNursingInsurance;
+      });
+    }
+
+    // 厚生年金保険でフィルター（保険者種別で）
+    if (this.filterWelfarePension) {
+      filtered = filtered.filter(emp => {
+        const welfarePensionType = this.getEmployeeField(emp, '厚生年金保険者種別');
+        return welfarePensionType === this.filterWelfarePension;
       });
     }
 
@@ -1095,16 +1114,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // 介護保険でフィルター
-    if (this.filterNursingInsurance === 'with') {
+    // 健康保険でフィルター（保険者種別で）
+    if (this.filterHealthInsurance) {
       filtered = filtered.filter(bonus => {
-        const nursingInsurance = this.getNursingInsurance(bonus, true);
-        return nursingInsurance > 0;
+        const healthInsuranceType = this.getEmployeeField(bonus, '健康保険者種別');
+        return healthInsuranceType === this.filterHealthInsurance;
       });
-    } else if (this.filterNursingInsurance === 'without') {
+    }
+
+    // 介護保険でフィルター（保険者種別で）
+    if (this.filterNursingInsurance) {
       filtered = filtered.filter(bonus => {
-        const nursingInsurance = this.getNursingInsurance(bonus, true);
-        return nursingInsurance === 0;
+        // 健康保険が組合保険の場合は「介護保険者種別（組合）」を、それ以外は「介護保険者種別」を参照
+        let nursingInsuranceType: string;
+        if (this.healthInsuranceType === 'kumiai') {
+          nursingInsuranceType = this.getEmployeeField(bonus, '介護保険者種別（組合）');
+        } else {
+          nursingInsuranceType = this.getEmployeeField(bonus, '介護保険者種別');
+        }
+        return nursingInsuranceType === this.filterNursingInsurance;
+      });
+    }
+
+    // 厚生年金保険でフィルター（保険者種別で）
+    if (this.filterWelfarePension) {
+      filtered = filtered.filter(bonus => {
+        const welfarePensionType = this.getEmployeeField(bonus, '厚生年金保険者種別');
+        return welfarePensionType === this.filterWelfarePension;
       });
     }
 

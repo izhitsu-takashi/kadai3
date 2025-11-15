@@ -64,16 +64,16 @@
               </select>
             </div>
             <div class="filter-item">
-              <label for="department-filter" class="filter-label">部署:</label>
+              <label for="health-insurance-filter" class="filter-label">健康保険:</label>
               <select 
-                id="department-filter" 
+                id="health-insurance-filter" 
                 class="filter-select"
-                [value]="filterDepartment"
-                (change)="filterDepartment = $any($event.target).value; onFilterChange()">
+                [value]="filterHealthInsurance"
+                (change)="filterHealthInsurance = $any($event.target).value; onFilterChange()">
                 <option value="">すべて</option>
-                <option *ngFor="let dept of availableDepartments" [value]="dept">
-                  {{ dept }}
-                </option>
+                <option value="健康保険被保険者">健康保険被保険者</option>
+                <option value="健康保険被扶養者">健康保険被扶養者</option>
+                <option value="任意継続被保険者">任意継続被保険者</option>
               </select>
             </div>
             <div class="filter-item">
@@ -84,8 +84,23 @@
                 [value]="filterNursingInsurance"
                 (change)="filterNursingInsurance = $any($event.target).value; onFilterChange()">
                 <option value="">すべて</option>
-                <option value="with">有</option>
-                <option value="without">無</option>
+                <option value="介護保険第1号被保険者">介護保険第1号被保険者</option>
+                <option value="介護保険第2号被保険者">介護保険第2号被保険者</option>
+                <option value="任意継続被保険者">任意継続被保険者</option>
+                <option value="介護保険の被保険者でない者">介護保険の被保険者でない者</option>
+                <option *ngIf="healthInsuranceType === 'kumiai'" value="特定被保険者（組合健保のみ）">特定被保険者（組合健保のみ）</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <label for="welfare-pension-filter" class="filter-label">厚生年金保険:</label>
+              <select 
+                id="welfare-pension-filter" 
+                class="filter-select"
+                [value]="filterWelfarePension"
+                (change)="filterWelfarePension = $any($event.target).value; onFilterChange()">
+                <option value="">すべて</option>
+                <option value="国民年金第2号被保険者">国民年金第2号被保険者</option>
+                <option value="国民年金第3号被保険者">国民年金第3号被保険者</option>
               </select>
             </div>
             <div class="filter-item">
