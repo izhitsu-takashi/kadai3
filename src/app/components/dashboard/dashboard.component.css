@@ -379,6 +379,28 @@
   width: 100%;
 }
 
+.employer-burden-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #f7fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 1.2rem;
+}
+
+.employer-burden-label {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1.2rem;
+}
+
+.employer-burden-value {
+  font-weight: 700;
+  color: #1a202c;
+  font-size: 1.3rem;
+}
+
 .employee-table {
   width: 100%;
   border-collapse: collapse;

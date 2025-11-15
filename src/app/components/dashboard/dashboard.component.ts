@@ -1928,7 +1928,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 組合保険が選択されている場合、設定された保険料率を使用して計算
     if (this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) {
       // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
-      return Math.round(baseAmount * (this.insuranceRate / 100));
+      // 小数第2位まで計算（100倍してから100で割る）
+      return Math.round(baseAmount * (this.insuranceRate / 100) * 100) / 100;
     }
     
     // 協会けんぽが選択されている場合、都道府県に基づいた保険料率を使用して計算
@@ -1936,7 +1937,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       const kenpoRate = this.kenpoRates[this.prefecture];
       if (kenpoRate && kenpoRate.healthRate > 0) {
         // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
-        return Math.round(baseAmount * (kenpoRate.healthRate / 100));
+        // 小数第2位まで計算（100倍してから100で割る）
+        return Math.round(baseAmount * (kenpoRate.healthRate / 100) * 100) / 100;
       }
     }
     
@@ -2003,7 +2005,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 保険料率設定から計算
       if (this.welfarePensionRate > 0) {
         // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
-        return Math.round(cappedAmount * (this.welfarePensionRate / 100));
+        // 小数第2位まで計算（100倍してから100で割る）
+        return Math.round(cappedAmount * (this.welfarePensionRate / 100) * 100) / 100;
       }
       // 設定がない場合は既存のデータを使用
       return employee.厚生年金保険料 ?? employee.welfarePension ?? 0;
@@ -2024,7 +2027,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.welfarePensionRate > 0) {
       const baseAmount = this.getStandardSalary(employee);
       // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
-      return Math.round(baseAmount * (this.welfarePensionRate / 100));
+      // 小数第2位まで計算（100倍してから100で割る）
+      return Math.round(baseAmount * (this.welfarePensionRate / 100) * 100) / 100;
     }
     // 設定がない場合は既存のデータを使用
     return employee.厚生年金保険料 ?? employee.welfarePension ?? 0;
@@ -2043,7 +2047,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.nursingInsuranceRate > 0) {
       const baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
       // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
-      return Math.round(baseAmount * (this.nursingInsuranceRate / 100));
+      // 小数第2位まで計算（100倍してから100で割る）
+      return Math.round(baseAmount * (this.nursingInsuranceRate / 100) * 100) / 100;
     }
     // 設定がない場合は既存のデータを使用
     return employee.介護保険料 ?? employee.nursingInsurance ?? 0;
@@ -2055,19 +2060,26 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const welfarePension = this.getWelfarePension(employee, isBonus);
     const nursingInsurance = this.getNursingInsurance(employee, isBonus);
     
-    // 各保険料ごとに奇数チェックを行い、折半計算
+    // 各保険料ごとに折半計算（小数が0.51以上なら切り上げ、0.50以下なら切り捨て）
     let personalBurden = 0;
+    
+    // 小数部分に基づいて切り上げ/切り捨てを行うヘルパー関数
+    const roundHalf = (value: number): number => {
+      const half = value / 2;
+      // 小数部分を取得（100倍して100で割った余り）
+      const decimalPart = (Math.round(half * 100) % 100) / 100;
+      // 0.51以上なら切り上げ、0.50以下なら切り捨て
+      if (decimalPart >= 0.51) {
+        return Math.ceil(half);
+      } else {
+        return Math.floor(half);
+      }
+    };
     
     // 健康保険料の本人負担額
     let healthInsurancePersonal: number;
     let actualReduction: number = 0; // 実際に差し引かれた額
-    if (healthInsurance % 2 === 1) {
-      // 奇数の場合、1円引いて折半
-      healthInsurancePersonal = Math.floor((healthInsurance - 1) / 2);
-    } else {
-      // 偶数の場合、通常通り折半
-      healthInsurancePersonal = Math.floor(healthInsurance / 2);
-    }
+    healthInsurancePersonal = roundHalf(healthInsurance);
     
     // 組合保険の場合、引き下げ額を適用
     if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
@@ -2079,24 +2091,45 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     personalBurden += healthInsurancePersonal;
     
     // 厚生年金保険料の本人負担額
-    if (welfarePension % 2 === 1) {
-      // 奇数の場合、1円引いて折半
-      personalBurden += Math.floor((welfarePension - 1) / 2);
-    } else {
-      // 偶数の場合、通常通り折半
-      personalBurden += Math.floor(welfarePension / 2);
-    }
+    personalBurden += roundHalf(welfarePension);
     
     // 介護保険料の本人負担額
-    if (nursingInsurance % 2 === 1) {
-      // 奇数の場合、1円引いて折半
-      personalBurden += Math.floor((nursingInsurance - 1) / 2);
-    } else {
-      // 偶数の場合、通常通り折半
-      personalBurden += Math.floor(nursingInsurance / 2);
-    }
+    personalBurden += roundHalf(nursingInsurance);
     
     return personalBurden;
+  }
+
+  /**
+   * 事業者負担額を計算（現在表示されているテーブルのデータから）
+   */
+  getEmployerBurden(): number {
+    // 現在表示されているテーブルのデータを取得
+    const data = this.tableType === 'salary' ? this.sortedEmployees : this.sortedBonuses;
+    const isBonus = this.tableType === 'bonus';
+    
+    if (!data || data.length === 0) {
+      return 0;
+    }
+    
+    // 各保険料の合計を計算（折半する前、小数点切り捨て）
+    let totalHealthInsurance = 0;
+    let totalWelfarePension = 0;
+    let totalNursingInsurance = 0;
+    let totalPersonalBurden = 0;
+    
+    data.forEach(emp => {
+      // 折半する前の保険料（小数点切り捨て）
+      totalHealthInsurance += Math.floor(this.getHealthInsurance(emp, isBonus));
+      totalWelfarePension += Math.floor(this.getWelfarePension(emp, isBonus));
+      totalNursingInsurance += Math.floor(this.getNursingInsurance(emp, isBonus));
+      // 社員負担額の合計
+      totalPersonalBurden += this.getPersonalBurden(emp, isBonus);
+    });
+    
+    // 事業者負担額 = (健康保険料合計 + 介護保険料合計 + 厚生年金保険料合計) - 社員負担額合計
+    const employerBurden = totalHealthInsurance + totalWelfarePension + totalNursingInsurance - totalPersonalBurden;
+    
+    return employerBurden;
   }
 
   getCompanyBurden(employee: Employee | Bonus, isBonus: boolean = false): number {

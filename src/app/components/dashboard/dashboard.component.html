@@ -136,6 +136,11 @@
             <p>データを読み込み中...</p>
           </div>
           <ng-container *ngIf="!isLoading">
+          <!-- 事業者負担額表示 -->
+          <div *ngIf="(tableType === 'salary' && sortedEmployees && sortedEmployees.length > 0) || (tableType === 'bonus' && sortedBonuses && sortedBonuses.length > 0)" class="employer-burden-display">
+            <div class="employer-burden-label">{{ selectedMonth }}　事業者負担額合計</div>
+            <div class="employer-burden-value">{{ getEmployerBurden() | number }}円</div>
+          </div>
           <!-- 給与テーブル -->
           <table *ngIf="tableType === 'salary' && employees && employees.length > 0" class="employee-table">
             <thead>
@@ -156,9 +161,9 @@
                 <td>{{ getEmployeeName(employee) }}</td>
                 <td>{{ getSalary(employee) | number }}</td>
                 <td>{{ getStandardSalary(employee) | number }}</td>
-                <td>{{ getHealthInsurance(employee, false) | number }}</td>
-                <td>{{ getWelfarePension(employee, false) | number }}</td>
-                <td>{{ getNursingInsurance(employee, false) | number }}</td>
+                <td>{{ getHealthInsurance(employee, false) | number:'1.2-2' }}</td>
+                <td>{{ getWelfarePension(employee, false) | number:'1.2-2' }}</td>
+                <td>{{ getNursingInsurance(employee, false) | number:'1.2-2' }}</td>
                 <td>{{ getPersonalBurden(employee, false) | number }}</td>
               </tr>
             </tbody>
@@ -183,9 +188,9 @@
                 <td>{{ getEmployeeName(bonus) }}</td>
                 <td>{{ getBonus(bonus) | number }}</td>
                 <td>{{ getStandardBonus(bonus) | number }}</td>
-                <td>{{ getHealthInsurance(bonus, true) | number }}</td>
-                <td>{{ getWelfarePension(bonus, true) | number }}</td>
-                <td>{{ getNursingInsurance(bonus, true) | number }}</td>
+                <td>{{ getHealthInsurance(bonus, true) | number:'1.2-2' }}</td>
+                <td>{{ getWelfarePension(bonus, true) | number:'1.2-2' }}</td>
+                <td>{{ getNursingInsurance(bonus, true) | number:'1.2-2' }}</td>
                 <td>{{ getPersonalBurden(bonus, true) | number }}</td>
               </tr>
             </tbody>
@@ -704,23 +709,19 @@
         </div>
         <div class="info-row">
           <span class="info-label">健康保険料</span>
-          <span class="info-value">{{ getHealthInsurance(selectedEmployee, tableType === 'bonus') | number }}円</span>
+          <span class="info-value">{{ getHealthInsurance(selectedEmployee, tableType === 'bonus') | number:'1.2-2' }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">厚生年金保険料</span>
-          <span class="info-value">{{ getWelfarePension(selectedEmployee, tableType === 'bonus') | number }}円</span>
+          <span class="info-value">{{ getWelfarePension(selectedEmployee, tableType === 'bonus') | number:'1.2-2' }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">介護保険料</span>
-          <span class="info-value">{{ getNursingInsurance(selectedEmployee, tableType === 'bonus') | number }}円</span>
+          <span class="info-value">{{ getNursingInsurance(selectedEmployee, tableType === 'bonus') | number:'1.2-2' }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">社員負担額</span>
           <span class="info-value">{{ getPersonalBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">会社負担額</span>
-          <span class="info-value">{{ getCompanyBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">健康介護保険等級</span>
