@@ -141,12 +141,10 @@
                 <td>{{ getEmployeeName(employee) }}</td>
                 <td>{{ getSalary(employee) | number }}</td>
                 <td>{{ getStandardSalary(employee) | number }}</td>
-                <td>{{ getGrade(employee) }}</td>
                 <td>{{ getHealthInsurance(employee, false) | number }}</td>
                 <td>{{ getWelfarePension(employee, false) | number }}</td>
                 <td>{{ getNursingInsurance(employee, false) | number }}</td>
                 <td>{{ getPersonalBurden(employee, false) | number }}</td>
-                <td>{{ getCompanyBurden(employee, false) | number }}</td>
               </tr>
             </tbody>
           </table>
@@ -174,7 +172,6 @@
                 <td>{{ getWelfarePension(bonus, true) | number }}</td>
                 <td>{{ getNursingInsurance(bonus, true) | number }}</td>
                 <td>{{ getPersonalBurden(bonus, true) | number }}</td>
-                <td>{{ getCompanyBurden(bonus, true) | number }}</td>
               </tr>
             </tbody>
           </table>
@@ -690,10 +687,6 @@
           <span class="info-label">標準賞与額</span>
           <span class="info-value">{{ getStandardBonus(selectedEmployee) | number }}円</span>
         </div>
-        <div class="info-row" *ngIf="tableType === 'salary'">
-          <span class="info-label">等級</span>
-          <span class="info-value">{{ getGrade(selectedEmployee) }}</span>
-        </div>
         <div class="info-row">
           <span class="info-label">健康保険料</span>
           <span class="info-value">{{ getHealthInsurance(selectedEmployee, tableType === 'bonus') | number }}円</span>
@@ -707,12 +700,44 @@
           <span class="info-value">{{ getNursingInsurance(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row">
-          <span class="info-label">本人負担額</span>
+          <span class="info-label">社員負担額</span>
           <span class="info-value">{{ getPersonalBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">会社負担額</span>
           <span class="info-value">{{ getCompanyBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary'">
+          <span class="info-label">健康介護保険等級</span>
+          <span class="info-value">{{ getGrade(selectedEmployee) }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary'">
+          <span class="info-label">厚生年金保険等級</span>
+          <span class="info-value">{{ getWelfarePensionGrade(selectedEmployee) > 0 ? getWelfarePensionGrade(selectedEmployee) : '-' }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary'">
+          <span class="info-label">健康保険者種別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '健康保険者種別') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary' && healthInsuranceType === 'kyokai'">
+          <span class="info-label">介護保険者種別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary' && healthInsuranceType === 'kumiai'">
+          <span class="info-label">介護保険者種別（組合）</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別（組合）') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary'">
+          <span class="info-label">厚生年金保険者種別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '厚生年金保険者種別') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary' && getEmployeeField(selectedEmployee, '報酬加算額') !== '-' && getEmployeeField(selectedEmployee, '報酬加算額') !== 0">
+          <span class="info-label">報酬加算額</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '報酬加算額') | number }}円</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'salary'">
+          <span class="info-label">在籍状況</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '在籍状況') }}</span>
         </div>
       </div>
     </div>

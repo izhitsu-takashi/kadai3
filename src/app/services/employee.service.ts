@@ -29,6 +29,14 @@ export interface Employee {
   勤務地?: string;
   性別?: string;
   入社日?: string;
+  健康介護保険等級?: number;
+  厚生年金保険等級?: number;
+  健康保険者種別?: string;
+  介護保険者種別?: string;
+  '介護保険者種別（組合）'?: string;
+  厚生年金保険者種別?: string;
+  報酬加算額?: number;
+  在籍状況?: string;
   // 英語キーもサポート（後方互換性のため）
   name?: string;
   salary?: number;

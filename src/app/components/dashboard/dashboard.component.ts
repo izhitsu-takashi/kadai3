@@ -150,7 +150,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoading = false;
   private allEmployeesData: Employee[] = []; // 全期間の給与データを保持
   private allBonusesData: Bonus[] = []; // 全期間の賞与データを保持
-  private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ
+  private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ（健康保険・介護保険用）
+  private welfarePensionGradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 厚生年金保険等級データ
   
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
@@ -228,12 +229,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'name', label: '氏名', type: 'string', sortable: false },
     { key: 'salary', label: '給与', type: 'number', sortable: false },
     { key: 'standardSalary', label: '標準報酬月額', type: 'number', sortable: false },
-    { key: 'grade', label: '等級', type: 'number', sortable: true },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
     { key: 'welfarePension', label: '厚生年金保険料', type: 'number', sortable: false },
     { key: 'nursingInsurance', label: '介護保険料', type: 'number', sortable: false },
-    { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false },
-    { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
+    { key: 'personalBurden', label: '社員負担額', type: 'number', sortable: false }
   ];
   
   bonusColumns = [
@@ -244,8 +243,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
     { key: 'welfarePension', label: '厚生年金保険料', type: 'number', sortable: false },
     { key: 'nursingInsurance', label: '介護保険料', type: 'number', sortable: false },
-    { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false },
-    { key: 'companyBurden', label: '会社負担額', type: 'number', sortable: false }
+    { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false }
   ];
   
   get columns() {
@@ -335,9 +333,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * 等級データを読み込む
    */
   private loadGradeData(): void {
-    this.http.get<{ hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> }>('/assets/等級.json').subscribe({
-      next: (data: { hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> }) => {
+    this.http.get<{ 
+      hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }>;
+      kouseinenkinReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }>;
+    }>('/assets/等級.json').subscribe({
+      next: (data: { 
+        hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }>;
+        kouseinenkinReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }>;
+      }) => {
         this.gradeData = data.hyouzyungetugakuReiwa7 || [];
+        this.welfarePensionGradeData = data.kouseinenkinReiwa7 || [];
         // 等級44~56のリストを作成（表示用）
         this.customGradeOptions = data.hyouzyungetugakuReiwa7
           .filter(item => item.grade >= 44 && item.grade <= 56)
@@ -346,6 +351,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       error: (error: any) => {
         console.error('Error loading grade data:', error);
         this.gradeData = [];
+        this.welfarePensionGradeData = [];
         this.customGradeOptions = [];
       }
     });
@@ -1799,6 +1805,43 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return salary;
   }
 
+  /**
+   * 厚生年金保険等級を取得
+   */
+  getWelfarePensionGrade(employee: Employee | Bonus): number {
+    // 給与テーブルの場合のみ計算
+    if (this.tableType !== 'salary') {
+      return employee.厚生年金保険等級 ?? 0;
+    }
+
+    // 標準報酬月額を取得
+    const standardSalary = this.getStandardSalary(employee);
+
+    // kouseinenkinReiwa7を参照して、標準報酬月額がどの範囲に当てはまるかを確認
+    if (this.welfarePensionGradeData.length > 0 && standardSalary > 0) {
+      // 標準報酬月額がmonthlyStandardと一致する等級を検索
+      const matchedGrade = this.welfarePensionGradeData.find(grade => {
+        return standardSalary === grade.monthlyStandard;
+      });
+
+      if (matchedGrade) {
+        return matchedGrade.grade;
+      }
+
+      // monthlyStandardで見つからない場合、from~toの範囲で検索
+      const rangeMatchedGrade = this.welfarePensionGradeData.find(grade => {
+        return standardSalary >= grade.from && standardSalary <= grade.to;
+      });
+
+      if (rangeMatchedGrade) {
+        return rangeMatchedGrade.grade;
+      }
+    }
+
+    // データが見つからない場合は0を返す
+    return 0;
+  }
+
   getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
     let baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
     
@@ -2116,17 +2159,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 日本語キーをチェック
     let value = (employee as any)[field];
     
-    // 部署フィールドの場合、「所属部署」もチェック
-    if (field === '部署' && !value) {
-      value = (employee as any)['所属部署'];
+    // 値がundefinedまたはnullの場合のみ、他のキーをチェック
+    if (value === undefined || value === null) {
+      // 部署フィールドの場合、「所属部署」もチェック
+      if (field === '部署') {
+        value = (employee as any)['所属部署'];
+      }
+      
+      // まだ値がない場合、英語キーもチェック
+      if (value === undefined || value === null) {
+        value = (employee as any)[this.getEnglishKey(field)];
+      }
     }
     
-    // 英語キーもチェック
-    if (!value) {
-      value = (employee as any)[this.getEnglishKey(field)];
-    }
-    
-    return value ?? '-';
+    // undefinedまたはnullの場合のみ'-'を返す（空文字列はそのまま返す）
+    return value === undefined || value === null ? '-' : value;
   }
   
   isBonusEmployee(employee: Employee | Bonus | null): boolean {
@@ -2154,7 +2201,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       '介護保険料': 'nursingInsurance',
       '本人負担額': 'personalBurden',
       '会社負担額': 'companyBurden',
-      '月': 'month'
+      '月': 'month',
+      '健康介護保険等級': 'healthNursingInsuranceGrade',
+      '厚生年金保険等級': 'welfarePensionGrade',
+      '健康保険者種別': 'healthInsuranceType',
+      '介護保険者種別': 'nursingInsuranceType',
+      '介護保険者種別（組合）': 'nursingInsuranceTypeKumiai',
+      '厚生年金保険者種別': 'welfarePensionType',
+      '報酬加算額': 'remunerationAddition',
+      '在籍状況': 'employmentStatus'
     };
     return keyMap[japaneseKey] || japaneseKey;
   }
