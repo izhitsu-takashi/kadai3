@@ -279,6 +279,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isInitialLoad = true;
     // フィルター適用フラグをリセット
     this.isFilterApplied = false;
+    // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
+    this.sortedEmployees = [];
+    this.sortedBonuses = [];
     // 等級データを読み込む
     this.loadGradeData();
     // まずすべてのデータを読み込んで利用可能な月のリストを取得
@@ -863,14 +866,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           // 実行時点のtableTypeを保存（recalculateAndUpdateAllEmployeesWithMaxGrade56内で変更される可能性があるため）
           const currentTableType = this.tableType;
           const asyncPromise = new Promise<void>((resolve) => {
-            setTimeout(async () => {
+          setTimeout(async () => {
               // 実行時点で再度tableTypeをチェック（ユーザーがテーブルを切り替えた可能性があるため）
               if (this.tableType === 'salary' && currentTableType === 'salary') {
-                await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
+            await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
                 // 更新後にテーブルを再読み込み（tableTypeが元のままであることを確認）
                 if (this.tableType === 'salary' && currentTableType === 'salary' && this.selectedMonth) {
-                  await this.updateTableFromMemory();
-                }
+              await this.updateTableFromMemory();
+            }
               }
               resolve();
             }, 100);
@@ -956,6 +959,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isLoading = true;
     // テーブルを非表示にするために、データを空にする
     this.employees = [];
+    // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
+    this.isFilterApplied = false;
+    // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
+    this.sortedEmployees = [];
     this.cdr.detectChanges();
     // 必ず月を選択する必要がある
     if (!this.selectedMonth && this.availableMonths.length > 0) {
@@ -999,6 +1006,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isLoading = true;
     // テーブルを非表示にするために、データを空にする
     this.bonuses = [];
+    // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
+    this.isFilterApplied = false;
+    // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
+    this.sortedBonuses = [];
     this.cdr.detectChanges();
     // 必ず月を選択する必要がある
     if (!this.selectedMonth && this.availableBonusMonths.length > 0) {
@@ -1280,6 +1291,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedMonth = month;
     // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
     this.isFilterApplied = false;
+    // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
+    this.sortedEmployees = [];
+    this.sortedBonuses = [];
     // フィルターはリセットしない（現在の設定を維持）
     if (this.tableType === 'salary') {
       this.loadEmployees();
@@ -1292,6 +1306,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.tableType = type;
     // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
     this.isFilterApplied = false;
+    // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
+    this.sortedEmployees = [];
+    this.sortedBonuses = [];
     // フィルターをリセット
     this.filterDepartment = '';
     this.filterNursingInsurance = '';
@@ -2205,7 +2222,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 退職済みの場合は全額を社員負担額とする
     if (isRetired) {
-      let personalBurden = 0;
+    let personalBurden = 0;
       
       // 健康保険料の本人負担額（全額）
       let healthInsurancePersonal = healthInsurance;
@@ -2265,6 +2282,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * 事業者負担額を計算（現在表示されているテーブルのデータから）
    */
   getEmployerBurden(): number {
+    // フィルターが適用されていない場合は0を返す
+    if (!this.isFilterApplied) {
+      return 0;
+    }
+    
     // 現在表示されているテーブルのデータを取得
     const data = this.tableType === 'salary' ? this.sortedEmployees : this.sortedBonuses;
     const isBonus = this.tableType === 'bonus';
@@ -2392,14 +2414,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 値がundefinedまたはnullの場合のみ、他のキーをチェック
     if (value === undefined || value === null) {
-      // 部署フィールドの場合、「所属部署」もチェック
+    // 部署フィールドの場合、「所属部署」もチェック
       if (field === '部署') {
-        value = (employee as any)['所属部署'];
-      }
-      
+      value = (employee as any)['所属部署'];
+    }
+    
       // まだ値がない場合、英語キーもチェック
       if (value === undefined || value === null) {
-        value = (employee as any)[this.getEnglishKey(field)];
+      value = (employee as any)[this.getEnglishKey(field)];
       }
     }
     
@@ -3306,16 +3328,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
             // 実行時点のtableTypeを保存
             const currentTableType = this.tableType;
             const asyncPromise = new Promise<void>((resolve) => {
-              setTimeout(async () => {
+            setTimeout(async () => {
                 // 実行時点で再度tableTypeをチェック（ユーザーがテーブルを切り替えた可能性があるため）
                 if (this.tableType === 'salary' && currentTableType === 'salary') {
-                  await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
+              await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
                   // 更新後にテーブルを再読み込み（tableTypeが元のままであることを確認）
                   if (this.tableType === 'salary' && currentTableType === 'salary' && this.selectedMonth) {
-                    await this.updateTableFromMemory();
-                  } else {
-                    this.recalculateInsuranceTable();
-                  }
+                await this.updateTableFromMemory();
+              } else {
+                this.recalculateInsuranceTable();
+              }
                 }
                 resolve();
               }, 100);
@@ -3524,19 +3546,19 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           // 実行時点のtableTypeを保存
           const currentTableType = this.tableType;
           const asyncPromise = new Promise<void>((resolve) => {
-            setTimeout(async () => {
+          setTimeout(async () => {
               // 実行時点で再度tableTypeをチェック（ユーザーがテーブルを切り替えた可能性があるため）
               if (this.tableType === 'salary' && currentTableType === 'salary') {
-                await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
+            await this.recalculateAndUpdateAllEmployeesWithMaxGrade56();
                 // 更新後にテーブルを再読み込み（tableTypeが元のままであることを確認）
                 if (this.tableType === 'salary' && currentTableType === 'salary' && this.selectedMonth) {
-                  await this.updateTableFromMemory();
-                } else {
-                  this.recalculateInsuranceTable();
-                }
+              await this.updateTableFromMemory();
+            } else {
+              this.recalculateInsuranceTable();
+            }
               }
               resolve();
-            }, 500);
+          }, 500);
           });
           this.asyncProcessingPromises.push(asyncPromise);
           // 非同期処理が追加された時点で、既に4つのデータ読み込みが完了している場合は完了チェック
