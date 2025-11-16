@@ -716,6 +716,10 @@
           <span class="info-value">{{ getStandardSalaryCalculationBase(selectedEmployee) | number }}円（{{ getStandardSalaryCalculationMethod(selectedEmployee) }}）</span>
         </div>
         <div class="info-row" *ngIf="tableType === 'bonus'">
+          <span class="info-label">賞与</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '賞与') | number }}円</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus'">
           <span class="info-label">標準賞与額</span>
           <span class="info-value">{{ getStandardBonus(selectedEmployee) | number }}円</span>
         </div>
@@ -734,6 +738,34 @@
         <div class="info-row">
           <span class="info-label">社員負担額</span>
           <span class="info-value">{{ getPersonalBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus'">
+          <span class="info-label">健康保険者種別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '健康保険者種別') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus' && healthInsuranceType === 'kyokai'">
+          <span class="info-label">介護保険者種別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus' && healthInsuranceType === 'kumiai'">
+          <span class="info-label">介護保険者種別（組合）</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別（組合）') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus'">
+          <span class="info-label">厚生年金保険者種別</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '厚生年金保険者種別') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus'">
+          <span class="info-label">在籍状況</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '在籍状況') }}</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus'">
+          <span class="info-label">年内賞与累計額</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '年内賞与累計額') | number }}円</span>
+        </div>
+        <div class="info-row" *ngIf="tableType === 'bonus'">
+          <span class="info-label">年内賞与支給回数</span>
+          <span class="info-value">{{ getEmployeeField(selectedEmployee, '年内賞与支給回数') }}</span>
         </div>
         <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">健康介護保険等級</span>
