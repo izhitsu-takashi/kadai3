@@ -59,8 +59,8 @@ async function importNewBonuses() {
   console.log(`Project: kensyu10117`);
   console.log(`Collection: bonus\n`);
   
-  // JSONファイルを読み込む
-  const jsonFilePath = path.join(__dirname, '社員賞与データ_賞与追加.json');
+  // JSONファイルを読み込む（src/assets/賞与.json）
+  const jsonFilePath = path.join(__dirname, 'src', 'assets', '賞与.json');
   const monthlyData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
   
   let successCount = 0;
