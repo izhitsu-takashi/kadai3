@@ -104,6 +104,18 @@
               </select>
             </div>
             <div class="filter-item">
+              <label for="employment-status-filter" class="filter-label">在籍状況:</label>
+              <select 
+                id="employment-status-filter" 
+                class="filter-select"
+                [value]="filterEmploymentStatus"
+                (change)="filterEmploymentStatus = $any($event.target).value; onFilterChange()">
+                <option value="">すべて</option>
+                <option value="在籍中">在籍中</option>
+                <option value="退職済み">退職済み</option>
+              </select>
+            </div>
+            <div class="filter-item">
               <div class="table-type-selector">
                 <button 
                   type="button"
@@ -161,9 +173,9 @@
                 <td>{{ getEmployeeName(employee) }}</td>
                 <td>{{ getSalary(employee) | number }}</td>
                 <td>{{ getStandardSalary(employee) | number }}</td>
-                <td>{{ getHealthInsurance(employee, false) | number:'1.2-2' }}</td>
-                <td>{{ getWelfarePension(employee, false) | number:'1.2-2' }}</td>
-                <td>{{ getNursingInsurance(employee, false) | number:'1.2-2' }}</td>
+                <td>{{ getHealthInsurance(employee, false) | number:'1.0-2' }}</td>
+                <td>{{ getWelfarePension(employee, false) | number:'1.0-2' }}</td>
+                <td>{{ getNursingInsurance(employee, false) | number:'1.0-2' }}</td>
                 <td>{{ getPersonalBurden(employee, false) | number }}</td>
               </tr>
             </tbody>
@@ -188,9 +200,9 @@
                 <td>{{ getEmployeeName(bonus) }}</td>
                 <td>{{ getBonus(bonus) | number }}</td>
                 <td>{{ getStandardBonus(bonus) | number }}</td>
-                <td>{{ getHealthInsurance(bonus, true) | number:'1.2-2' }}</td>
-                <td>{{ getWelfarePension(bonus, true) | number:'1.2-2' }}</td>
-                <td>{{ getNursingInsurance(bonus, true) | number:'1.2-2' }}</td>
+                <td>{{ getHealthInsurance(bonus, true) | number:'1.0-2' }}</td>
+                <td>{{ getWelfarePension(bonus, true) | number:'1.0-2' }}</td>
+                <td>{{ getNursingInsurance(bonus, true) | number:'1.0-2' }}</td>
                 <td>{{ getPersonalBurden(bonus, true) | number }}</td>
               </tr>
             </tbody>
@@ -709,15 +721,15 @@
         </div>
         <div class="info-row">
           <span class="info-label">健康保険料</span>
-          <span class="info-value">{{ getHealthInsurance(selectedEmployee, tableType === 'bonus') | number:'1.2-2' }}円</span>
+          <span class="info-value">{{ getHealthInsurance(selectedEmployee, tableType === 'bonus') | number:'1.0-2' }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">厚生年金保険料</span>
-          <span class="info-value">{{ getWelfarePension(selectedEmployee, tableType === 'bonus') | number:'1.2-2' }}円</span>
+          <span class="info-value">{{ getWelfarePension(selectedEmployee, tableType === 'bonus') | number:'1.0-2' }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">介護保険料</span>
-          <span class="info-value">{{ getNursingInsurance(selectedEmployee, tableType === 'bonus') | number:'1.2-2' }}円</span>
+          <span class="info-value">{{ getNursingInsurance(selectedEmployee, tableType === 'bonus') | number:'1.0-2' }}円</span>
         </div>
         <div class="info-row">
           <span class="info-label">社員負担額</span>

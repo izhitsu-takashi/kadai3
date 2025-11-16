@@ -170,6 +170,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   filterNursingInsurance: string = ''; // 介護保険者種別でフィルター
   filterHealthInsurance: string = ''; // 健康保険者種別でフィルター
   filterWelfarePension: string = ''; // 厚生年金保険者種別でフィルター
+  filterEmploymentStatus: string = ''; // 在籍状況でフィルター
   availableDepartments: string[] = [];
 
   // 書類作成用
@@ -1041,6 +1042,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
+    // 在籍状況でフィルター
+    if (this.filterEmploymentStatus) {
+      filtered = filtered.filter(emp => {
+        const employmentStatus = this.getEmployeeField(emp, '在籍状況');
+        return employmentStatus === this.filterEmploymentStatus;
+      });
+    }
+
     // ソートを適用（デフォルトで社員IDの昇順）
     const sortKey = this.sortColumn || 'id';
     const column = this.columns.find(col => col.key === sortKey);
@@ -1141,6 +1150,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       filtered = filtered.filter(bonus => {
         const welfarePensionType = this.getEmployeeField(bonus, '厚生年金保険者種別');
         return welfarePensionType === this.filterWelfarePension;
+      });
+    }
+
+    // 在籍状況でフィルター
+    if (this.filterEmploymentStatus) {
+      filtered = filtered.filter(bonus => {
+        const employmentStatus = this.getEmployeeField(bonus, '在籍状況');
+        return employmentStatus === this.filterEmploymentStatus;
       });
     }
 
@@ -1450,6 +1467,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const employeeId = this.getEmployeeId(employee);
     const salary = this.getSalary(employee);
 
+    // 在籍状況を取得
+    const employmentStatus = this.getEmployeeField(employee, '在籍状況');
+    const isRetired = employmentStatus === '退職済み';
+
     // 月を数値に変換（例: "2024年04月" -> 202404）
     const monthNum = this.monthToNumber(currentMonth);
 
@@ -1485,6 +1506,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       (employee as any).standardSalaryCalculationMethod = calculationMethod;
     }
 
+    // 退職済みの場合は標準報酬月額の上限を32万円に設定
+    if (isRetired) {
+      const retiredMaxStandardSalary = 320000; // 32万円
+      if (calculatedStandardSalary > retiredMaxStandardSalary) {
+        calculatedStandardSalary = retiredMaxStandardSalary;
+      }
+    }
+
     // 等級.jsonを参照して、計算された標準報酬月額がどの範囲に当てはまるかを確認
     // 当てはまった部分のmonthlyStandardの値を標準報酬月額として返す
     if (this.gradeData.length > 0 && calculatedStandardSalary > 0) {
@@ -1492,7 +1521,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       let maxStandardSalary: number;
       let maxGrade: number;
       
-      if (this.healthInsuranceType === 'kyokai') {
+      // 退職済みの場合は上限を32万円に設定
+      if (isRetired) {
+        maxStandardSalary = 320000; // 32万円
+        maxGrade = 23; // 健康介護保険等級の最大値
+      } else if (this.healthInsuranceType === 'kyokai') {
         // 協会けんぽの場合：最大等級50、最大標準報酬月額139万円
         maxGrade = 50;
         const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
@@ -1537,7 +1570,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 健康保険の種類に応じて最大標準報酬月額を決定
     let maxStandardSalary: number;
     
-    if (this.healthInsuranceType === 'kyokai') {
+    // 退職済みの場合は上限を32万円に設定
+    if (isRetired) {
+      maxStandardSalary = 320000; // 32万円
+    } else if (this.healthInsuranceType === 'kyokai') {
       // 協会けんぽの場合：最大標準報酬月額139万円
       const maxGradeInfo = this.gradeData.find(grade => grade.grade === 50);
       maxStandardSalary = maxGradeInfo ? maxGradeInfo.monthlyStandard : 1390000; // デフォルト139万円
@@ -1721,6 +1757,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return employee.等級 ?? employee.grade ?? 0;
     }
 
+    // 在籍状況を取得
+    const employmentStatus = this.getEmployeeField(employee, '在籍状況');
+    const isRetired = employmentStatus === '退職済み';
+
     // 標準報酬月額を取得（健康保険の種類に応じた制限が適用されている）
     const standardSalary = this.getStandardSalary(employee);
 
@@ -1738,7 +1778,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         
         // 健康保険の種類に応じて最大等級を制限
         let maxGrade: number;
-        if (this.healthInsuranceType === 'kyokai') {
+        if (isRetired) {
+          // 退職済みの場合：最大等級23
+          maxGrade = 23;
+        } else if (this.healthInsuranceType === 'kyokai') {
           // 協会けんぽの場合：最大等級50
           maxGrade = 50;
         } else {
@@ -1766,7 +1809,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         let maxStandardSalary: number;
         let maxGrade: number;
         
-        if (this.healthInsuranceType === 'kyokai') {
+        if (isRetired) {
+          // 退職済みの場合：最大等級23、最大標準報酬月額32万円
+          maxGrade = 23;
+          maxStandardSalary = 320000; // 32万円
+        } else if (this.healthInsuranceType === 'kyokai') {
           // 協会けんぽの場合：最大等級50、最大標準報酬月額139万円
           maxGrade = 50;
           const maxGradeInfo = this.gradeData.find(grade => grade.grade === maxGrade);
@@ -1850,6 +1897,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return employee.厚生年金保険等級 ?? 0;
     }
 
+    // 在籍状況を取得
+    const employmentStatus = this.getEmployeeField(employee, '在籍状況');
+    const isRetired = employmentStatus === '退職済み';
+
+    // 退職済みの場合は厚生年金保険等級を0に設定（表示上は「-」になる）
+    if (isRetired) {
+      return 0;
+    }
+
     // 標準報酬月額を取得
     const standardSalary = this.getStandardSalary(employee);
 
@@ -1879,6 +1935,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
+    // 健康保険者種別が「健康保険被扶養者」の場合は健康保険料を0円にする
+    const healthInsuranceType = this.getEmployeeField(employee, '健康保険者種別');
+    if (healthInsuranceType === '健康保険被扶養者') {
+      return 0;
+    }
+    
     let baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
     
     // 賞与の場合、年間の課税される対象の標準賞与額を制限
@@ -1995,6 +2057,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getWelfarePension(employee: Employee | Bonus, isBonus: boolean = false): number {
+    // 在籍状況が「退職済み」の場合は厚生年金保険料を0円にする
+    const employmentStatus = this.getEmployeeField(employee, '在籍状況');
+    if (employmentStatus === '退職済み') {
+      return 0;
+    }
+    
+    // 厚生年金保険者種別が「国民年金第3号被保険者」の場合は厚生年金保険料を0円にする
+    const welfarePensionType = this.getEmployeeField(employee, '厚生年金保険者種別');
+    if (welfarePensionType === '国民年金第3号被保険者') {
+      return 0;
+    }
+    
     const grade = this.getGrade(employee);
     
     // 賞与の場合、標準賞与額が150万円以上の場合は150万円を上限とする
@@ -2060,7 +2134,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const welfarePension = this.getWelfarePension(employee, isBonus);
     const nursingInsurance = this.getNursingInsurance(employee, isBonus);
     
-    // 各保険料ごとに折半計算（小数が0.51以上なら切り上げ、0.50以下なら切り捨て）
+    // 在籍状況を取得
+    const employmentStatus = this.getEmployeeField(employee, '在籍状況');
+    const isRetired = employmentStatus === '退職済み';
+    
+    // 退職済みの場合は全額を社員負担額とする
+    if (isRetired) {
+      let personalBurden = 0;
+      
+      // 健康保険料の本人負担額（全額）
+      let healthInsurancePersonal = healthInsurance;
+      
+      // 組合保険の場合、引き下げ額を適用
+      if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
+        healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
+      }
+      
+      personalBurden += healthInsurancePersonal;
+      personalBurden += welfarePension; // 厚生年金保険料（全額、ただし退職済みの場合は0円）
+      personalBurden += nursingInsurance; // 介護保険料（全額）
+      
+      return personalBurden;
+    }
+    
+    // 在籍中の場合は折半計算（小数が0.51以上なら切り上げ、0.50以下なら切り捨て）
     let personalBurden = 0;
     
     // 小数部分に基づいて切り上げ/切り捨てを行うヘルパー関数
