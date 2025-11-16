@@ -49,6 +49,16 @@
     </aside>
     <main class="dashboard-content">
       <div *ngIf="selectedMenuId === 'insurance-list'" class="insurance-list-container">
+        <!-- 初期データ読み込み中のローディング表示 -->
+        <div *ngIf="isInitialDataLoading" class="initial-loading-overlay">
+          <div class="initial-loading-content">
+            <div class="loading-spinner"></div>
+            <p class="loading-message">データを読み込んでいます</p>
+            <p class="loading-submessage">この処理には15秒ほどかかります</p>
+          </div>
+        </div>
+        <!-- 初期データ読み込み完了後のコンテンツ -->
+        <div [class.loading-disabled]="isInitialDataLoading" class="insurance-list-content">
         <div class="filter-container">
           <div class="filter-row">
             <div class="filter-item">
@@ -57,6 +67,7 @@
                 id="month-select" 
                 class="filter-select"
                 [(ngModel)]="selectedMonth"
+                [disabled]="isInitialDataLoading"
                 (change)="onMonthChange($any($event.target).value)">
                 <option *ngFor="let month of (tableType === 'salary' ? availableMonths : availableBonusMonths)" [value]="month">
                   {{ month }}
@@ -69,6 +80,7 @@
                 id="health-insurance-filter" 
                 class="filter-select"
                 [value]="filterHealthInsurance"
+                [disabled]="isInitialDataLoading"
                 (change)="filterHealthInsurance = $any($event.target).value; onFilterChange()">
                 <option value="">すべて</option>
                 <option value="健康保険被保険者">健康保険被保険者</option>
@@ -82,6 +94,7 @@
                 id="nursing-insurance-filter" 
                 class="filter-select"
                 [value]="filterNursingInsurance"
+                [disabled]="isInitialDataLoading"
                 (change)="filterNursingInsurance = $any($event.target).value; onFilterChange()">
                 <option value="">すべて</option>
                 <option value="介護保険第1号被保険者">介護保険第1号被保険者</option>
@@ -97,6 +110,7 @@
                 id="welfare-pension-filter" 
                 class="filter-select"
                 [value]="filterWelfarePension"
+                [disabled]="isInitialDataLoading"
                 (change)="filterWelfarePension = $any($event.target).value; onFilterChange()">
                 <option value="">すべて</option>
                 <option value="国民年金第2号被保険者">国民年金第2号被保険者</option>
@@ -109,6 +123,7 @@
                 id="employment-status-filter" 
                 class="filter-select"
                 [value]="filterEmploymentStatus"
+                [disabled]="isInitialDataLoading"
                 (change)="filterEmploymentStatus = $any($event.target).value; onFilterChange()">
                 <option value="">すべて</option>
                 <option value="在籍中">在籍中</option>
@@ -121,6 +136,7 @@
                   type="button"
                   class="table-type-button"
                   [class.active]="tableType === 'salary'"
+                  [disabled]="isInitialDataLoading"
                   (click)="onTableTypeChange('salary')">
                   給与
                 </button>
@@ -128,6 +144,7 @@
                   type="button"
                   class="table-type-button"
                   [class.active]="tableType === 'bonus'"
+                  [disabled]="isInitialDataLoading"
                   (click)="onTableTypeChange('bonus')">
                   賞与
                 </button>
@@ -137,6 +154,7 @@
               <button 
                 type="button"
                 class="csv-export-button"
+                [disabled]="isInitialDataLoading"
                 (click)="exportToCSV()">
                 CSV出力
               </button>
@@ -168,7 +186,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let employee of sortedEmployees" (click)="openEmployeeModal(employee)" class="employee-row">
+              <tr *ngFor="let employee of sortedEmployees" (click)="!isInitialDataLoading && openEmployeeModal(employee)" class="employee-row" [class.disabled]="isInitialDataLoading">
                 <td>{{ getEmployeeId(employee) }}</td>
                 <td>{{ getEmployeeName(employee) }}</td>
                 <td>{{ getSalary(employee) | number }}</td>
@@ -195,7 +213,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let bonus of sortedBonuses" (click)="openEmployeeModal(bonus)" class="employee-row">
+              <tr *ngFor="let bonus of sortedBonuses" (click)="!isInitialDataLoading && openEmployeeModal(bonus)" class="employee-row" [class.disabled]="isInitialDataLoading">
                 <td>{{ getEmployeeId(bonus) }}</td>
                 <td>{{ getEmployeeName(bonus) }}</td>
                 <td>{{ getBonus(bonus) | number }}</td>
@@ -211,6 +229,7 @@
             <p>データがありません</p>
           </div> -->
           </ng-container>
+        </div>
         </div>
       </div>
       <div *ngIf="selectedMenuId === 'company-settings'" class="settings-page-container">
