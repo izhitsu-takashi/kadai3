@@ -166,8 +166,8 @@
             <p>データを読み込み中...</p>
           </div>
           <ng-container *ngIf="!isLoading">
-          <!-- 事業者負担額表示 -->
-          <div *ngIf="(tableType === 'salary' && sortedEmployees && sortedEmployees.length > 0) || (tableType === 'bonus' && sortedBonuses && sortedBonuses.length > 0)" class="employer-burden-display">
+          <!-- 事業者負担額表示（フィルター適用後のみ表示） -->
+          <div *ngIf="isFilterApplied && ((tableType === 'salary' && sortedEmployees && sortedEmployees.length > 0) || (tableType === 'bonus' && sortedBonuses && sortedBonuses.length > 0))" class="employer-burden-display">
             <div class="employer-burden-label">{{ selectedMonth }}　事業者負担額合計</div>
             <div class="employer-burden-value">{{ getEmployerBurden() | number }}円</div>
           </div>

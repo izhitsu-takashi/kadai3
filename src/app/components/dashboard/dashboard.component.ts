@@ -151,6 +151,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isInitialDataLoading = true; // 初期データ読み込み中フラグ（保険料一覧ページ用）
   private initialDataLoadCounter = 0; // 初期データ読み込み完了を追跡（等級データ、給与データ、賞与データ、健康保険設定）
   private asyncProcessingPromises: Promise<void>[] = []; // 非同期処理の完了を追跡
+  private isInitialLoad = true; // 初期読み込み中フラグ（再計算をスキップするため）
+  isFilterApplied = false; // フィルターが適用されたかどうかのフラグ（事業主負担額表示用）
   private allEmployeesData: Employee[] = []; // 全期間の給与データを保持
   private allBonusesData: Bonus[] = []; // 全期間の賞与データを保持
   private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ（健康保険・介護保険用）
@@ -273,6 +275,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.asyncProcessingPromises = [];
     // 初期データ読み込み中フラグを設定
     this.isInitialDataLoading = true;
+    // 初期読み込み中フラグを設定（再計算をスキップするため）
+    this.isInitialLoad = true;
+    // フィルター適用フラグをリセット
+    this.isFilterApplied = false;
     // 等級データを読み込む
     this.loadGradeData();
     // まずすべてのデータを読み込んで利用可能な月のリストを取得
@@ -495,7 +501,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * 保険料一覧テーブルを再計算する
    */
   private recalculateInsuranceTable(): void {
-    console.log(`[TABLE UPDATE] recalculateInsuranceTableが実行されました - ${new Date().toISOString()}`);
     // 現在のテーブルタイプに応じてデータを再読み込み
     if (this.tableType === 'salary') {
       this.loadEmployees();
@@ -508,7 +513,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * メモリ上のデータからテーブルを更新（Firestoreの反映を待たずに即座に更新）
    */
   private async updateTableFromMemory(): Promise<void> {
-    console.log(`[TABLE UPDATE] updateTableFromMemoryが実行されました - ${new Date().toISOString()}`);
     if (this.tableType !== 'salary' || !this.selectedMonth) {
       return;
     }
@@ -532,14 +536,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * すべての従業員の標準報酬月額と等級を再計算してFirestoreに保存（健康保険の種類に応じた制限を適用）
    */
   private async recalculateAndUpdateAllEmployeesWithMaxGrade56(): Promise<void> {
-    console.log(`[TABLE UPDATE] recalculateAndUpdateAllEmployeesWithMaxGrade56が実行されました - ${new Date().toISOString()} - tableType: ${this.tableType}`);
     // 賞与テーブルの場合は実行しない（給与データの再計算のみ）
     if (this.tableType === 'bonus') {
-      console.log('[RECALC] Skipping recalculation - bonus table is active');
       return;
     }
     if (this.allEmployeesData.length === 0) {
-      console.log('[RECALC] No employee data to recalculate');
       return;
     }
     
@@ -554,7 +555,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         maxGrade = 50;
       }
     }
-    console.log(`[RECALC] Starting recalculation with max grade ${maxGrade} (healthInsuranceType: ${this.healthInsuranceType}, gradeSettingType: ${this.gradeSettingType})`);
     
     // 一時的にtableTypeをsalaryに設定して標準報酬月額と等級を計算
     const originalTableType = this.tableType;
@@ -661,7 +661,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           maxGrade = 50;
         }
       }
-      console.log(`[RECALC] Updated ${updatePromises.length} employees with max grade ${maxGrade} (healthInsuranceType: ${this.healthInsuranceType}, gradeSettingType: ${this.gradeSettingType})`);
     } catch (error) {
       console.error('Error recalculating employees:', error);
     } finally {
@@ -790,7 +789,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * ページの読み込みが完全に終了したタイミングで呼び出す
    */
   private setCurrentMonthIfAvailable(): void {
-    console.log(`[TABLE UPDATE] setCurrentMonthIfAvailableが実行されました - ${new Date().toISOString()} - selectedMenuId: ${this.selectedMenuId}, tableType: ${this.tableType}`);
     if (this.selectedMenuId !== 'insurance-list') {
       return; // 保険料一覧ページでない場合は何もしない
     }
@@ -858,9 +856,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.availableMonths = Array.from(monthsSet).sort();
         
+        // 初期読み込み時は再計算をスキップ（既に計算済みのデータを読み込むだけ）
         // すべての従業員データを再計算して更新（健康保険の種類に応じた制限を適用）
         // 給与テーブルの場合のみ実行（賞与テーブルの場合は実行しない）
-        if (this.tableType === 'salary' && this.allEmployeesData.length > 0 && this.gradeData.length > 0) {
+        if (!this.isInitialLoad && this.tableType === 'salary' && this.allEmployeesData.length > 0 && this.gradeData.length > 0) {
           // 実行時点のtableTypeを保存（recalculateAndUpdateAllEmployeesWithMaxGrade56内で変更される可能性があるため）
           const currentTableType = this.tableType;
           const asyncPromise = new Promise<void>((resolve) => {
@@ -874,7 +873,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
               }
               resolve();
-            }, 1000);
+            }, 100);
           });
           this.asyncProcessingPromises.push(asyncPromise);
           // 非同期処理が追加された時点で、既に4つのデータ読み込みが完了している場合は完了チェック
@@ -951,7 +950,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadEmployees(): void {
-    console.log(`[TABLE UPDATE] loadEmployeesが実行されました - ${new Date().toISOString()} - selectedMonth: ${this.selectedMonth}, tableType: ${this.tableType}`);
     if (this.tableType !== 'salary') {
       return;
     }
@@ -965,7 +963,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.employeeService.getEmployees(this.selectedMonth).subscribe({
       next: (data) => {
-        console.log(`[TABLE UPDATE] loadEmployees - データ読み込み完了 - ${new Date().toISOString()} - データ件数: ${data.length}`);
         this.employees = data;
         this.updateFilterOptions(data);
         this.applyFilters();
@@ -996,7 +993,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadBonuses(): void {
-    console.log(`[TABLE UPDATE] loadBonusesが実行されました - ${new Date().toISOString()} - selectedMonth: ${this.selectedMonth}, tableType: ${this.tableType}`);
     if (this.tableType !== 'bonus') {
       return;
     }
@@ -1010,7 +1006,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.employeeService.getBonuses(this.selectedMonth).subscribe({
       next: (data) => {
-        console.log(`[TABLE UPDATE] loadBonuses - データ読み込み完了 - ${new Date().toISOString()} - データ件数: ${data.length}`);
         this.bonuses = data;
         this.updateFilterOptions(data);
         this.applyBonusFilters();
@@ -1060,7 +1055,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   applyFilters(): void {
-    console.log(`[TABLE UPDATE] applyFiltersが実行されました - ${new Date().toISOString()}`);
     let filtered = [...this.employees];
 
     // 部署でフィルター
@@ -1161,10 +1155,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.sortedEmployees = filtered;
+    // フィルター適用フラグを設定
+    this.isFilterApplied = true;
   }
 
   onFilterChange(): void {
-    console.log(`[TABLE UPDATE] onFilterChangeが実行されました - ${new Date().toISOString()} - tableType: ${this.tableType}`);
     if (this.tableType === 'salary') {
       this.applyFilters();
     } else {
@@ -1173,7 +1168,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   applyBonusFilters(): void {
-    console.log(`[TABLE UPDATE] applyBonusFiltersが実行されました - ${new Date().toISOString()}`);
     let filtered = [...this.bonuses];
 
     // 部署でフィルター
@@ -1278,11 +1272,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.sortedBonuses = filtered;
+    // フィルター適用フラグを設定
+    this.isFilterApplied = true;
   }
 
   onMonthChange(month: string): void {
-    console.log(`[TABLE UPDATE] onMonthChangeが実行されました - ${new Date().toISOString()} - month: ${month}, tableType: ${this.tableType}`);
     this.selectedMonth = month;
+    // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
+    this.isFilterApplied = false;
     // フィルターはリセットしない（現在の設定を維持）
     if (this.tableType === 'salary') {
       this.loadEmployees();
@@ -1292,8 +1289,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onTableTypeChange(type: 'salary' | 'bonus'): void {
-    console.log(`[TABLE UPDATE] onTableTypeChangeが実行されました - ${new Date().toISOString()} - type: ${type}, selectedMenuId: ${this.selectedMenuId}`);
     this.tableType = type;
+    // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
+    this.isFilterApplied = false;
     // フィルターをリセット
     this.filterDepartment = '';
     this.filterNursingInsurance = '';
@@ -3297,11 +3295,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.isHealthInsuranceEditing = false;
         }
         
+        // 初期読み込み時は再計算をスキップ（既に計算済みのデータを読み込むだけ）
         // 健康保険設定が読み込まれた後、データを再計算する
         // 組合保険または協会けんぽの場合、保険料率が変更されている可能性があるため
         // 給与テーブルの場合のみ実行（賞与テーブルの場合は実行しない）
-        if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
-            (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
+        if (!this.isInitialLoad && ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
+            (this.healthInsuranceType === 'kyokai' && this.prefecture))) {
           // 健康保険の種類に応じた制限を適用するため、すべての従業員データを再計算
           if (this.tableType === 'salary' && this.allEmployeesData.length > 0 && this.gradeData.length > 0) {
             // 実行時点のtableTypeを保存
@@ -3319,7 +3318,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
                   }
                 }
                 resolve();
-              }, 500);
+              }, 100);
             });
             this.asyncProcessingPromises.push(asyncPromise);
             // 非同期処理が追加された時点で、既に4つのデータ読み込みが完了している場合は完了チェック
@@ -3363,7 +3362,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 非同期処理が追加される可能性があるため、少し待ってからチェック
       setTimeout(() => {
         this.checkAsyncProcessingComplete();
-      }, 1200); // setTimeoutの最大遅延時間（1000ms）+ 少し余裕を持たせる
+      }, 200); // 遅延を大幅に削減（200ms）
     }
   }
 
@@ -3375,15 +3374,19 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 非同期処理がすべて完了するまで待つ
     if (this.asyncProcessingPromises.length > 0) {
       Promise.all(this.asyncProcessingPromises).then(() => {
+        // 初期読み込み完了フラグを解除
+        this.isInitialLoad = false;
         this.isInitialDataLoading = false;
         this.cdr.detectChanges();
       }).catch(() => {
         // エラーが発生してもローディングを解除
+        this.isInitialLoad = false;
         this.isInitialDataLoading = false;
         this.cdr.detectChanges();
       });
     } else {
       // 非同期処理がない場合は即座にローディングを解除
+      this.isInitialLoad = false;
       this.isInitialDataLoading = false;
       this.cdr.detectChanges();
     }
