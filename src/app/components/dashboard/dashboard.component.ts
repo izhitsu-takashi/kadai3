@@ -178,6 +178,26 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isDownloadingBonusTemplate: boolean = false;
   isDownloadingGradeTemplate: boolean = false;
   
+  // アップロード用フラグ
+  isUploadingSalary: boolean = false;
+  isUploadingBonus: boolean = false;
+  isUploadingGrade: boolean = false;
+  
+  // アップロード進捗状況
+  uploadProgress: {
+    isUploading: boolean;
+    type: 'salary' | 'bonus' | 'grade' | null;
+    current: number;
+    total: number;
+    message: string;
+  } = {
+    isUploading: false,
+    type: null,
+    current: 0,
+    total: 0,
+    message: ''
+  };
+  
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
   
@@ -380,7 +400,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * 等級データを読み込む
    */
-  private loadGradeData(): void {
+  private async loadGradeData(): Promise<void> {
+    try {
+      // まずFirestoreから読み込む
+      const firestore = this.firestoreService.getFirestore();
+      if (firestore) {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const docRef = doc(firestore, 'gradeSettings', 'gradeData');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          this.gradeData = data['hyouzyungetugakuReiwa7'] || [];
+          this.welfarePensionGradeData = data['kouseinenkinReiwa7'] || [];
+          // 等級44~56のリストを作成（表示用）
+          this.customGradeOptions = this.gradeData
+            .filter(item => item.grade >= 44 && item.grade <= 56)
+            .map(item => ({ grade: item.grade, monthlyStandard: item.monthlyStandard }));
+          // 初期データ読み込み完了をカウント
+          this.checkInitialDataLoadComplete();
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading grade data from Firestore:', error);
+    }
+
+    // Firestoreにデータがない場合は、assetsから読み込む
     this.http.get<{ 
       hyouzyungetugakuReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }>;
       kouseinenkinReiwa7: Array<{ grade: number; monthlyStandard: number; from: number; to: number }>;
@@ -1427,6 +1473,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async selectMenu(menuId: string): Promise<void> {
+    // アップロード中の場合は移動をブロック
+    if (this.uploadProgress.isUploading) {
+      alert('アップロード処理中です。完了するまでお待ちください。');
+      return;
+    }
+    
     // 健康保険設定ページが編集モードの場合は移動をブロック
     if (this.selectedMenuId === 'health-insurance-settings' && this.isHealthInsuranceEditing) {
       alert('設定を保存してください');
@@ -1474,6 +1526,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async selectSettingsSubMenu(subMenuId: string): Promise<void> {
+    // アップロード中の場合は移動をブロック
+    if (this.uploadProgress.isUploading) {
+      alert('アップロード処理中です。完了するまでお待ちください。');
+      return;
+    }
+    
     // 健康保険設定ページが編集モードの場合は移動をブロック
     if (this.selectedMenuId === 'health-insurance-settings' && this.isHealthInsuranceEditing) {
       alert('設定を保存してください');
@@ -2446,6 +2504,181 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return '';
     }
     return (employee as any).標準報酬月額算出方法 ?? (employee as any).standardSalaryCalculationMethod ?? '';
+  }
+
+  // 元のJSONファイルのフィールド順序を定義（給与テンプレート.jsonの順番）
+  private getFieldOrder(): string[] {
+    return [
+      'ID', 'id',
+      '氏名', 'name',
+      '晩御飯',
+      '年齢', 'age',
+      '性別',
+      '入社日',
+      '給与', 'salary',
+      '賞与', 'bonus',
+      '所属部署', '部署',
+      '健康保険者種別',
+      '介護保険者種別',
+      '介護保険者種別（組合）',
+      '厚生年金保険者種別',
+      '報酬加算額',
+      '在籍状況',
+      '年内賞与累計額',
+      '年内賞与支給回数'
+    ];
+  }
+
+  // 社員オブジェクトのすべてのフィールドキーを取得（除外するキーを除く）
+  getEmployeeAllFields(employee: Employee | Bonus): Array<{ key: string; value: any }> {
+    if (!employee) {
+      return [];
+    }
+
+    // 除外するキー（Firestoreのメタデータ、計算済みフィールドなど）
+    const excludedKeys = [
+      'id', '月', 'month',
+      // 計算済みフィールドは除外（計算後の値のみ表示するため）
+      '標準報酬月額', 'standardSalary',
+      '標準賞与額', 'standardBonus',
+      '健康保険料', 'healthInsurance',
+      '厚生年金保険料', 'welfarePension',
+      '介護保険料', 'nursingInsurance',
+      '社員負担額', 'personalBurden',
+      '本人負担額',
+      '会社負担額', 'companyBurden',
+      '健康介護保険等級', 'grade',
+      '厚生年金保険等級',
+      '標準報酬月額算出基準給与', 'standardSalaryCalculationBase',
+      '標準報酬月額算出方法', 'standardSalaryCalculationMethod'
+    ];
+    
+    const fields: Array<{ key: string; value: any }> = [];
+    const fieldOrder = this.getFieldOrder();
+    const fieldMap = new Map<string, { key: string; value: any }>();
+    
+    // オブジェクトのすべてのキーを取得
+    for (const key in employee) {
+      if (employee.hasOwnProperty(key) && !excludedKeys.includes(key)) {
+        const value = (employee as any)[key];
+        fieldMap.set(key, { key, value });
+      }
+    }
+    
+    // 定義された順序に従ってフィールドを追加
+    const addedKeys = new Set<string>();
+    for (const orderedKey of fieldOrder) {
+      // 日本語キーと英語キーの両方をチェック
+      if (fieldMap.has(orderedKey)) {
+        fields.push(fieldMap.get(orderedKey)!);
+        addedKeys.add(orderedKey);
+      }
+    }
+    
+    // 定義された順序にないフィールドを最後に追加（元の順番を保持）
+    for (const [key, field] of fieldMap.entries()) {
+      if (!addedKeys.has(key)) {
+        fields.push(field);
+      }
+    }
+    
+    return fields;
+  }
+
+  // フィールドの表示名を取得
+  getFieldDisplayName(key: string): string {
+    // 既知のフィールド名のマッピング
+    const displayNames: { [key: string]: string } = {
+      'ID': 'ID',
+      'id': 'ID',
+      '氏名': '氏名',
+      'name': '氏名',
+      '年齢': '年齢',
+      'age': '年齢',
+      '性別': '性別',
+      '入社日': '入社日',
+      '給与': '給与',
+      'salary': '給与',
+      '賞与': '賞与',
+      'bonus': '賞与',
+      '標準報酬月額': '標準報酬月額',
+      'standardSalary': '標準報酬月額',
+      '標準賞与額': '標準賞与額',
+      'standardBonus': '標準賞与額',
+      '健康保険料': '健康保険料',
+      'healthInsurance': '健康保険料',
+      '厚生年金保険料': '厚生年金保険料',
+      'welfarePension': '厚生年金保険料',
+      '介護保険料': '介護保険料',
+      'nursingInsurance': '介護保険料',
+      '社員負担額': '社員負担額',
+      'personalBurden': '社員負担額',
+      '本人負担額': '本人負担額',
+      '会社負担額': '会社負担額',
+      'companyBurden': '会社負担額',
+      '健康介護保険等級': '健康介護保険等級',
+      'grade': '健康介護保険等級',
+      '厚生年金保険等級': '厚生年金保険等級',
+      '健康保険者種別': '健康保険者種別',
+      '介護保険者種別': '介護保険者種別',
+      '介護保険者種別（組合）': '介護保険者種別（組合）',
+      '厚生年金保険者種別': '厚生年金保険者種別',
+      '報酬加算額': '報酬加算額',
+      '在籍状況': '在籍状況',
+      '所属部署': '所属部署',
+      '部署': '部署',
+      '年内賞与累計額': '年内賞与累計額',
+      '年内賞与支給回数': '年内賞与支給回数',
+      '晩御飯': '晩御飯'
+    };
+    
+    return displayNames[key] || key;
+  }
+
+  // フィールドの値をフォーマット
+  formatFieldValue(key: string, value: any): string {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+    
+    // 数値フィールドのリスト
+    const numericFields = [
+      '給与', 'salary', '賞与', 'bonus', '標準報酬月額', 'standardSalary',
+      '標準賞与額', 'standardBonus', '健康保険料', 'healthInsurance',
+      '厚生年金保険料', 'welfarePension', '介護保険料', 'nursingInsurance',
+      '社員負担額', 'personalBurden', '本人負担額', '会社負担額', 'companyBurden',
+      '報酬加算額', '年齢', 'age', '年内賞与累計額'
+    ];
+    
+    // 数値フィールドの場合は数値としてフォーマット
+    if (numericFields.includes(key) && typeof value === 'number') {
+      return value.toLocaleString('ja-JP');
+    }
+    
+    // 日付フィールドの処理
+    if (key === '入社日' && typeof value === 'string') {
+      return this.formatDate(value);
+    }
+    
+    return String(value);
+  }
+
+  // 値が数値かどうかをチェック
+  isNumber(value: any): boolean {
+    return typeof value === 'number';
+  }
+
+  // 数値フィールドかどうかをチェック（数値型で、料・額・給与・賞与を含む、または年齢）
+  isNumericField(key: string, value: any): boolean {
+    if (typeof value !== 'number') {
+      return false;
+    }
+    return key.includes('料') || key.includes('額') || key.includes('給与') || key.includes('賞与') || key === '年齢';
+  }
+
+  // 日付フィールドかどうかをチェック
+  isDateField(key: string): boolean {
+    return key === '入社日';
   }
 
   getEmployeeField(employee: Employee | Bonus, field: string): any {
@@ -5285,6 +5518,413 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     } finally {
       this.isDownloadingGradeTemplate = false;
     }
+  }
+
+  // 給与データファイル選択時の処理
+  async onSalaryFileSelected(event: any): Promise<void> {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 確認ダイアログ
+    const confirmed = confirm('既存の給与データを削除して新しいデータをアップロードします。よろしいですか？');
+    if (!confirmed) {
+      event.target.value = ''; // ファイル選択をリセット
+      return;
+    }
+
+    this.isUploadingSalary = true;
+    this.uploadProgress = {
+      isUploading: true,
+      type: 'salary',
+      current: 0,
+      total: 0,
+      message: 'ファイルを読み込んでいます...'
+    };
+    this.cdr.detectChanges();
+
+    try {
+      const fileContent = await this.readFileAsText(file);
+      const jsonData = JSON.parse(fileContent);
+
+      // Firestoreを取得
+      const firestore = this.firestoreService.getFirestore();
+      if (!firestore) {
+        alert('Firestoreが初期化されていません。');
+        this.isUploadingSalary = false;
+        this.uploadProgress.isUploading = false;
+        return;
+      }
+
+      // 総件数を計算
+      let totalCount = 0;
+      for (const month in jsonData) {
+        if (Array.isArray(jsonData[month])) {
+          totalCount += jsonData[month].length;
+        }
+      }
+
+      this.uploadProgress.total = totalCount;
+      this.uploadProgress.message = '既存のデータを削除中...';
+      this.cdr.detectChanges();
+
+      // 既存のデータを削除
+      await this.deleteAllEmployees();
+
+      this.uploadProgress.message = 'データをインポート中...';
+      this.uploadProgress.current = 0;
+      this.cdr.detectChanges();
+
+      // データをインポート
+      const result = await this.importEmployeesDataWithProgress(jsonData);
+
+      this.uploadProgress.message = `アップロード完了: ${result.success}件成功/${result.total}件`;
+      this.cdr.detectChanges();
+
+      setTimeout(() => {
+        // ページをリロード
+        window.location.reload();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error uploading salary data:', error);
+      this.uploadProgress.message = `エラーが発生しました: ${error.message || error}`;
+      this.cdr.detectChanges();
+      setTimeout(() => {
+        this.isUploadingSalary = false;
+        this.uploadProgress.isUploading = false;
+        this.cdr.detectChanges();
+      }, 3000);
+    } finally {
+      event.target.value = ''; // ファイル選択をリセット
+    }
+  }
+
+  // 賞与データファイル選択時の処理
+  async onBonusFileSelected(event: any): Promise<void> {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 確認ダイアログ
+    const confirmed = confirm('既存の賞与データを削除して新しいデータをアップロードします。よろしいですか？');
+    if (!confirmed) {
+      event.target.value = ''; // ファイル選択をリセット
+      return;
+    }
+
+    this.isUploadingBonus = true;
+    this.uploadProgress = {
+      isUploading: true,
+      type: 'bonus',
+      current: 0,
+      total: 0,
+      message: 'ファイルを読み込んでいます...'
+    };
+    this.cdr.detectChanges();
+
+    try {
+      const fileContent = await this.readFileAsText(file);
+      const jsonData = JSON.parse(fileContent);
+
+      // Firestoreを取得
+      const firestore = this.firestoreService.getFirestore();
+      if (!firestore) {
+        alert('Firestoreが初期化されていません。');
+        this.isUploadingBonus = false;
+        this.uploadProgress.isUploading = false;
+        return;
+      }
+
+      // 総件数を計算
+      let totalCount = 0;
+      for (const month in jsonData) {
+        if (Array.isArray(jsonData[month])) {
+          totalCount += jsonData[month].length;
+        }
+      }
+
+      this.uploadProgress.total = totalCount;
+      this.uploadProgress.message = '既存のデータを削除中...';
+      this.cdr.detectChanges();
+
+      // 既存のデータを削除
+      await this.deleteAllBonuses();
+
+      this.uploadProgress.message = 'データをインポート中...';
+      this.uploadProgress.current = 0;
+      this.cdr.detectChanges();
+
+      // データをインポート
+      const result = await this.importBonusesDataWithProgress(jsonData);
+
+      this.uploadProgress.message = `アップロード完了: ${result.success}件成功/${result.total}件`;
+      this.cdr.detectChanges();
+
+      setTimeout(() => {
+        // ページをリロード
+        window.location.reload();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error uploading bonus data:', error);
+      this.uploadProgress.message = `エラーが発生しました: ${error.message || error}`;
+      this.cdr.detectChanges();
+      setTimeout(() => {
+        this.isUploadingBonus = false;
+        this.uploadProgress.isUploading = false;
+        this.cdr.detectChanges();
+      }, 3000);
+    } finally {
+      event.target.value = ''; // ファイル選択をリセット
+    }
+  }
+
+  // 等級データファイル選択時の処理
+  async onGradeFileSelected(event: any): Promise<void> {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 確認ダイアログ
+    const confirmed = confirm('等級データを更新します。よろしいですか？');
+    if (!confirmed) {
+      event.target.value = ''; // ファイル選択をリセット
+      return;
+    }
+
+    this.isUploadingGrade = true;
+    this.uploadProgress = {
+      isUploading: true,
+      type: 'grade',
+      current: 0,
+      total: 100,
+      message: 'ファイルを読み込んでいます...'
+    };
+    this.cdr.detectChanges();
+
+    try {
+      const fileContent = await this.readFileAsText(file);
+      const jsonData = JSON.parse(fileContent);
+
+      // Firestoreを取得
+      const firestore = this.firestoreService.getFirestore();
+      if (!firestore) {
+        alert('Firestoreが初期化されていません。');
+        this.isUploadingGrade = false;
+        this.uploadProgress.isUploading = false;
+        return;
+      }
+
+      this.uploadProgress.message = '等級データを保存中...';
+      this.uploadProgress.current = 50;
+      this.cdr.detectChanges();
+
+      // Firestoreに保存
+      const { doc, setDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'gradeSettings', 'gradeData');
+      await setDoc(docRef, jsonData, { merge: true });
+
+      this.uploadProgress.current = 80;
+      this.uploadProgress.message = 'データを更新中...';
+      this.cdr.detectChanges();
+
+      // メモリ上のデータを更新
+      this.gradeData = jsonData['hyouzyungetugakuReiwa7'] || [];
+      this.welfarePensionGradeData = jsonData['kouseinenkinReiwa7'] || [];
+      
+      // 等級44~56のリストを更新
+      this.customGradeOptions = this.gradeData
+        .filter(item => item.grade >= 44 && item.grade <= 56)
+        .map(item => ({ grade: item.grade, monthlyStandard: item.monthlyStandard }));
+
+      this.uploadProgress.current = 100;
+      this.uploadProgress.message = '等級データを更新しました。';
+      this.cdr.detectChanges();
+      
+      // ページをリロード
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error uploading grade data:', error);
+      this.uploadProgress.message = `エラーが発生しました: ${error.message || error}`;
+      this.cdr.detectChanges();
+      setTimeout(() => {
+        this.isUploadingGrade = false;
+        this.uploadProgress.isUploading = false;
+        this.cdr.detectChanges();
+      }, 3000);
+    } finally {
+      event.target.value = ''; // ファイル選択をリセット
+    }
+  }
+
+  // ファイルをテキストとして読み込む
+  private readFileAsText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        resolve(e.target?.result as string);
+      };
+      reader.onerror = (e) => {
+        reject(new Error('ファイルの読み込みに失敗しました。'));
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  // 給与データをインポート
+  private async importEmployeesData(monthlyData: { [key: string]: any[] }): Promise<{ success: number; total: number }> {
+    let successCount = 0;
+    let totalCount = 0;
+
+    for (const [month, employees] of Object.entries(monthlyData)) {
+      for (const employee of employees) {
+        try {
+          const employeeWithMonth = {
+            ...employee,
+            月: month
+          };
+          await this.employeeService.addEmployee(employeeWithMonth);
+          successCount++;
+          totalCount++;
+        } catch (error) {
+          console.error('Error importing employee:', error);
+          totalCount++;
+        }
+      }
+    }
+
+    return { success: successCount, total: totalCount };
+  }
+
+  // 給与データをインポート（進捗表示付き）
+  private async importEmployeesDataWithProgress(monthlyData: { [key: string]: any[] }): Promise<{ success: number; total: number }> {
+    let successCount = 0;
+    let totalCount = 0;
+
+    for (const [month, employees] of Object.entries(monthlyData)) {
+      for (const employee of employees) {
+        try {
+          const employeeWithMonth = {
+            ...employee,
+            月: month
+          };
+          await this.employeeService.addEmployee(employeeWithMonth);
+          successCount++;
+          totalCount++;
+          
+          // 進捗を更新
+          this.uploadProgress.current = totalCount;
+          if (totalCount % 10 === 0 || totalCount === this.uploadProgress.total) {
+            this.cdr.detectChanges();
+          }
+        } catch (error) {
+          console.error('Error importing employee:', error);
+          totalCount++;
+          this.uploadProgress.current = totalCount;
+          if (totalCount % 10 === 0 || totalCount === this.uploadProgress.total) {
+            this.cdr.detectChanges();
+          }
+        }
+      }
+    }
+
+    return { success: successCount, total: totalCount };
+  }
+
+  // 賞与データをインポート
+  private async importBonusesData(monthlyData: { [key: string]: any[] }): Promise<{ success: number; total: number }> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) return { success: 0, total: 0 };
+
+    const { collection, addDoc } = await import('firebase/firestore');
+    let successCount = 0;
+    let totalCount = 0;
+
+    for (const [month, bonuses] of Object.entries(monthlyData)) {
+      for (const bonus of bonuses) {
+        try {
+          const bonusWithMonth = {
+            ...bonus,
+            月: month
+          };
+          await addDoc(collection(firestore, 'bonus'), bonusWithMonth);
+          successCount++;
+          totalCount++;
+        } catch (error) {
+          console.error('Error importing bonus:', error);
+          totalCount++;
+        }
+      }
+    }
+
+    return { success: successCount, total: totalCount };
+  }
+
+  // 賞与データをインポート（進捗表示付き）
+  private async importBonusesDataWithProgress(monthlyData: { [key: string]: any[] }): Promise<{ success: number; total: number }> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) return { success: 0, total: 0 };
+
+    const { collection, addDoc } = await import('firebase/firestore');
+    let successCount = 0;
+    let totalCount = 0;
+
+    for (const [month, bonuses] of Object.entries(monthlyData)) {
+      for (const bonus of bonuses) {
+        try {
+          const bonusWithMonth = {
+            ...bonus,
+            月: month
+          };
+          await addDoc(collection(firestore, 'bonus'), bonusWithMonth);
+          successCount++;
+          totalCount++;
+          
+          // 進捗を更新
+          this.uploadProgress.current = totalCount;
+          if (totalCount % 10 === 0 || totalCount === this.uploadProgress.total) {
+            this.cdr.detectChanges();
+          }
+        } catch (error) {
+          console.error('Error importing bonus:', error);
+          totalCount++;
+          this.uploadProgress.current = totalCount;
+          if (totalCount % 10 === 0 || totalCount === this.uploadProgress.total) {
+            this.cdr.detectChanges();
+          }
+        }
+      }
+    }
+
+    return { success: successCount, total: totalCount };
+  }
+
+  // 全給与データを削除
+  private async deleteAllEmployees(): Promise<void> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) return;
+
+    const { collection, getDocs, deleteDoc, doc } = await import('firebase/firestore');
+    const employeesRef = collection(firestore, 'employee');
+    const querySnapshot = await getDocs(employeesRef);
+    
+    const deletePromises = querySnapshot.docs.map(docSnapshot => 
+      deleteDoc(doc(firestore, 'employee', docSnapshot.id))
+    );
+    await Promise.all(deletePromises);
+  }
+
+  // 全賞与データを削除
+  private async deleteAllBonuses(): Promise<void> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) return;
+
+    const { collection, getDocs, deleteDoc, doc } = await import('firebase/firestore');
+    const bonusesRef = collection(firestore, 'bonus');
+    const querySnapshot = await getDocs(bonusesRef);
+    
+    const deletePromises = querySnapshot.docs.map(docSnapshot => 
+      deleteDoc(doc(firestore, 'bonus', docSnapshot.id))
+    );
+    await Promise.all(deletePromises);
   }
 
 }

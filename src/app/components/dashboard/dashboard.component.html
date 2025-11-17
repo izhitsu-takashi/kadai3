@@ -6,7 +6,7 @@
         <button 
           class="notification-button" 
           type="button"
-          [disabled]="selectedMenuId === 'health-insurance-settings' && isHealthInsuranceEditing"
+          [disabled]="(selectedMenuId === 'health-insurance-settings' && isHealthInsuranceEditing) || uploadProgress.isUploading"
           (click)="toggleNotification()">
           お知らせ
           <span *ngIf="getUnreadNotificationCount() > 0" class="notification-badge">{{ getUnreadNotificationCount() }}</span>
@@ -14,7 +14,7 @@
         <button 
           class="logout-button" 
           type="button"
-          [disabled]="isLoggingOut || isHealthInsuranceSaving || (selectedMenuId === 'health-insurance-settings' && isHealthInsuranceEditing)"
+          [disabled]="isLoggingOut || isHealthInsuranceSaving || (selectedMenuId === 'health-insurance-settings' && isHealthInsuranceEditing) || uploadProgress.isUploading"
           (click)="onLogout()">
           {{ isLoggingOut ? 'ログアウト中' : 'ログアウト' }}
         </button>
@@ -30,7 +30,8 @@
             [class.active]="selectedMenuId === item.id || (item.id === 'settings' && (isSettingsExpanded || isSettingsSubMenuActive()))"
             type="button"
             [attr.data-id]="item.id"
-            (click)="selectMenu(item.id)">
+            (click)="selectMenu(item.id)"
+            [disabled]="uploadProgress.isUploading">
             {{ item.label }}
           </button>
           <!-- 設定のサブメニュー -->
@@ -41,7 +42,8 @@
               [class.active]="isSettingsSubMenuSelected(subMenu.id)"
               [class.setup-required]="isSubMenuSetupRequired(subMenu.id)"
               type="button"
-              (click)="selectSettingsSubMenu(subMenu.id)">
+              (click)="selectSettingsSubMenu(subMenu.id)"
+              [disabled]="uploadProgress.isUploading">
               {{ subMenu.label }}
             </button>
           </div>
@@ -703,6 +705,18 @@
                 [disabled]="isDownloadingSalaryTemplate">
                 {{ isDownloadingSalaryTemplate ? 'ダウンロード中...' : '給与テンプレートをダウンロード' }}
               </button>
+              <div class="upload-section">
+                <input 
+                  type="file" 
+                  id="salaryFileInput" 
+                  accept=".json"
+                  (change)="onSalaryFileSelected($event)"
+                  style="display: none;">
+                <label for="salaryFileInput" class="upload-button">
+                  <span *ngIf="!isUploadingSalary">給与データをアップロード</span>
+                  <span *ngIf="isUploadingSalary">アップロード中...</span>
+                </label>
+              </div>
             </div>
             
             <div class="download-card">
@@ -722,6 +736,18 @@
                 [disabled]="isDownloadingBonusTemplate">
                 {{ isDownloadingBonusTemplate ? 'ダウンロード中...' : '賞与テンプレートをダウンロード' }}
               </button>
+              <div class="upload-section">
+                <input 
+                  type="file" 
+                  id="bonusFileInput" 
+                  accept=".json"
+                  (change)="onBonusFileSelected($event)"
+                  style="display: none;">
+                <label for="bonusFileInput" class="upload-button">
+                  <span *ngIf="!isUploadingBonus">賞与データをアップロード</span>
+                  <span *ngIf="isUploadingBonus">アップロード中...</span>
+                </label>
+              </div>
             </div>
             
             <div class="download-card">
@@ -741,6 +767,18 @@
                 [disabled]="isDownloadingGradeTemplate">
                 {{ isDownloadingGradeTemplate ? 'ダウンロード中...' : '等級テンプレートをダウンロード' }}
               </button>
+              <div class="upload-section">
+                <input 
+                  type="file" 
+                  id="gradeFileInput" 
+                  accept=".json"
+                  (change)="onGradeFileSelected($event)"
+                  style="display: none;">
+                <label for="gradeFileInput" class="upload-button">
+                  <span *ngIf="!isUploadingGrade">等級データをアップロード</span>
+                  <span *ngIf="isUploadingGrade">アップロード中...</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -938,6 +976,25 @@
   </div>
 </div>
 
+<!-- アップロード中のオーバーレイ -->
+<div *ngIf="uploadProgress.isUploading" class="upload-overlay">
+  <div class="upload-overlay-content">
+    <div class="upload-spinner"></div>
+    <h3 class="upload-title">
+      <span *ngIf="uploadProgress.type === 'salary'">給与データをアップロード中</span>
+      <span *ngIf="uploadProgress.type === 'bonus'">賞与データをアップロード中</span>
+      <span *ngIf="uploadProgress.type === 'grade'">等級データをアップロード中</span>
+    </h3>
+    <p class="upload-message">{{ uploadProgress.message }}</p>
+    <div class="upload-progress-bar-container">
+      <div class="upload-progress-bar" [style.width.%]="uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total * 100) : 0"></div>
+    </div>
+    <p class="upload-progress-text" *ngIf="uploadProgress.total > 0">
+      {{ uploadProgress.current }} / {{ uploadProgress.total }} 件処理中
+    </p>
+  </div>
+</div>
+
 <!-- チュートリアルオーバーレイ -->
 <div *ngIf="isTutorialMode" class="tutorial-overlay">
   <div class="tutorial-modal" (click)="$event.stopPropagation()">
@@ -982,26 +1039,21 @@
     </div>
     <div class="modal-body" *ngIf="selectedEmployee">
       <div class="employee-info-container">
-        <div class="info-row">
-          <span class="info-label">ID</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, 'ID') }}</span>
+        <!-- JSONファイルの元データ -->
+        <div class="info-row" *ngFor="let field of getEmployeeAllFields(selectedEmployee)">
+          <span class="info-label">{{ getFieldDisplayName(field.key) }}</span>
+          <span class="info-value">
+            <span *ngIf="isNumericField(field.key, field.value)">
+              {{ field.value | number }}<span *ngIf="field.key.includes('料') || field.key.includes('額') || field.key.includes('給与') || field.key.includes('賞与')">円</span>
+            </span>
+            <span *ngIf="isDateField(field.key)">{{ formatDate(field.value) }}</span>
+            <span *ngIf="!isDateField(field.key) && !isNumericField(field.key, field.value)">
+              {{ field.value }}
+            </span>
+          </span>
         </div>
-        <div class="info-row">
-          <span class="info-label">氏名</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '氏名') }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">年齢</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '年齢') }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">性別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '性別') }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">入社日</span>
-          <span class="info-value">{{ formatDate(getEmployeeField(selectedEmployee, '入社日')) }}</span>
-        </div>
+        
+        <!-- 計算済みフィールド（計算後の値のみ表示） -->
         <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">標準報酬月額</span>
           <span class="info-value">{{ getStandardSalary(selectedEmployee) | number }}円</span>
@@ -1009,10 +1061,6 @@
         <div class="info-row" *ngIf="tableType === 'salary' && getStandardSalaryCalculationBase(selectedEmployee) > 0">
           <span class="info-label">標準報酬月額算出基準給与</span>
           <span class="info-value">{{ getStandardSalaryCalculationBase(selectedEmployee) | number }}円（{{ getStandardSalaryCalculationMethod(selectedEmployee) }}）</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus'">
-          <span class="info-label">賞与</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '賞与') | number }}円</span>
         </div>
         <div class="info-row" *ngIf="tableType === 'bonus'">
           <span class="info-label">標準賞与額</span>
@@ -1034,34 +1082,6 @@
           <span class="info-label">社員負担額</span>
           <span class="info-value">{{ getPersonalBurden(selectedEmployee, tableType === 'bonus') | number }}円</span>
         </div>
-        <div class="info-row" *ngIf="tableType === 'bonus'">
-          <span class="info-label">健康保険者種別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '健康保険者種別') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus' && healthInsuranceType === 'kyokai'">
-          <span class="info-label">介護保険者種別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus' && healthInsuranceType === 'kumiai' && hasSpecificInsured">
-          <span class="info-label">介護保険者種別（組合）</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別（組合）') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus'">
-          <span class="info-label">厚生年金保険者種別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '厚生年金保険者種別') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus'">
-          <span class="info-label">在籍状況</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '在籍状況') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus'">
-          <span class="info-label">年内賞与累計額</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '年内賞与累計額') | number }}円</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'bonus'">
-          <span class="info-label">年内賞与支給回数</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '年内賞与支給回数') }}</span>
-        </div>
         <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">健康介護保険等級</span>
           <span class="info-value">{{ getGrade(selectedEmployee) }}</span>
@@ -1069,30 +1089,6 @@
         <div class="info-row" *ngIf="tableType === 'salary'">
           <span class="info-label">厚生年金保険等級</span>
           <span class="info-value">{{ getWelfarePensionGrade(selectedEmployee) > 0 ? getWelfarePensionGrade(selectedEmployee) : '-' }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'salary'">
-          <span class="info-label">健康保険者種別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '健康保険者種別') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'salary' && healthInsuranceType === 'kyokai'">
-          <span class="info-label">介護保険者種別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'salary' && healthInsuranceType === 'kumiai' && hasSpecificInsured">
-          <span class="info-label">介護保険者種別（組合）</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別（組合）') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'salary'">
-          <span class="info-label">厚生年金保険者種別</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '厚生年金保険者種別') }}</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'salary' && getEmployeeField(selectedEmployee, '報酬加算額') !== '-' && getEmployeeField(selectedEmployee, '報酬加算額') !== 0">
-          <span class="info-label">報酬加算額</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '報酬加算額') | number }}円</span>
-        </div>
-        <div class="info-row" *ngIf="tableType === 'salary'">
-          <span class="info-label">在籍状況</span>
-          <span class="info-value">{{ getEmployeeField(selectedEmployee, '在籍状況') }}</span>
         </div>
       </div>
     </div>

@@ -251,6 +251,19 @@
   color: white;
 }
 
+.menu-item:disabled,
+.submenu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.menu-item:disabled:hover,
+.submenu-item:disabled:hover {
+  background: inherit;
+  color: inherit;
+}
+
 .submenu-item:last-child {
   border-bottom: 1px solid #e2e8f0;
 }
@@ -681,6 +694,35 @@
 .download-button.template-button:hover:not(:disabled) {
   background: #38a169;
   box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
+.upload-section {
+  margin-top: 0.75rem;
+}
+
+.upload-button {
+  display: inline-block;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #ed8936;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.upload-button:hover {
+  background: #dd6b20;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(237, 137, 54, 0.3);
+}
+
+.upload-button:active {
+  transform: translateY(0);
 }
 
 .company-form {
@@ -1752,6 +1794,23 @@
   padding: 1.5rem;
 }
 
+.info-section {
+  margin-bottom: 2rem;
+}
+
+.info-section:last-child {
+  margin-bottom: 0;
+}
+
+.info-section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #667eea;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;
@@ -2616,4 +2675,81 @@
 
 .insurer-note-list li:last-child {
   margin-bottom: 0;
+}
+
+/* アップロード中のオーバーレイ */
+.upload-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.upload-overlay-content {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.upload-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1.5rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.upload-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+}
+
+.upload-message {
+  font-size: 1rem;
+  color: #4a5568;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+}
+
+.upload-progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.upload-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.upload-progress-text {
+  font-size: 0.9rem;
+  color: #718096;
+  margin: 0;
 }
