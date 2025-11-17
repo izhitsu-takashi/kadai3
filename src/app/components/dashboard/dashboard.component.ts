@@ -181,6 +181,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   templateCreationYear: string = '';
   templateCreationMonth: string = '';
   isCreatingTemplate: boolean = false;
+  templateColumns: string[] = []; // テンプレートの列情報
+  addedColumns: string[] = []; // 追加された列
+  isAddColumnModalOpen: boolean = false; // 列追加モーダルの開閉状態
+  newColumnName: string = ''; // 新しい列名
   
   // アップロード用フラグ
   isUploadingSalary: boolean = false;
@@ -5816,6 +5820,103 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // データ種別が変更されたら、選択されている年月をリセット
     this.templateCreationYear = '';
     this.templateCreationMonth = '';
+    // 追加された列をリセット
+    this.addedColumns = [];
+    // 列情報を読み込む
+    this.loadTemplateColumns();
+  }
+  
+  // すべての列を取得（テンプレートの列 + 追加された列）
+  getAllColumns(): string[] {
+    const allColumns = [...this.templateColumns];
+    // 追加された列で、既存の列にないもののみ追加
+    this.addedColumns.forEach(column => {
+      if (!allColumns.includes(column)) {
+        allColumns.push(column);
+      }
+    });
+    return allColumns;
+  }
+  
+  // 追加された列かどうかをチェック
+  isAddedColumn(column: string): boolean {
+    return this.addedColumns.includes(column);
+  }
+  
+  // 列追加モーダルを開く
+  openAddColumnModal(): void {
+    this.newColumnName = '';
+    this.isAddColumnModalOpen = true;
+  }
+  
+  // 列追加モーダルを閉じる
+  closeAddColumnModal(): void {
+    this.isAddColumnModalOpen = false;
+    this.newColumnName = '';
+  }
+  
+  // 列を追加
+  addColumn(): void {
+    if (!this.newColumnName || this.newColumnName.trim() === '') {
+      return;
+    }
+    
+    const columnName = this.newColumnName.trim();
+    
+    // 既に存在する列かチェック
+    if (this.templateColumns.includes(columnName) || this.addedColumns.includes(columnName)) {
+      alert(`列「${columnName}」は既に存在します。`);
+      return;
+    }
+    
+    // 追加された列に追加
+    this.addedColumns.push(columnName);
+    this.closeAddColumnModal();
+    this.cdr.detectChanges();
+  }
+  
+  // 追加された列を削除
+  removeAddedColumn(column: string): void {
+    const index = this.addedColumns.indexOf(column);
+    if (index > -1) {
+      this.addedColumns.splice(index, 1);
+      this.cdr.detectChanges();
+    }
+  }
+
+  // テンプレートの列情報を読み込む
+  async loadTemplateColumns(): Promise<void> {
+    if (!this.templateDataType) {
+      this.templateColumns = [];
+      return;
+    }
+
+    try {
+      const dataTypeLabel = this.templateDataType === 'salary' ? '給与' : '賞与';
+      const sourceFileName = `yyyy年mm月_${dataTypeLabel}.json`;
+      
+      const templateData = await firstValueFrom(this.http.get<any>(`/assets/${sourceFileName}`));
+      
+      // テンプレートデータから列情報を取得
+      if (templateData && templateData['yyyy年mm月'] && Array.isArray(templateData['yyyy年mm月']) && templateData['yyyy年mm月'].length > 0) {
+        const firstItem = templateData['yyyy年mm月'][0];
+        this.templateColumns = Object.keys(firstItem);
+      } else if (templateData && typeof templateData === 'object') {
+        // 直接オブジェクトの場合
+        const firstKey = Object.keys(templateData)[0];
+        if (templateData[firstKey] && Array.isArray(templateData[firstKey]) && templateData[firstKey].length > 0) {
+          const firstItem = templateData[firstKey][0];
+          this.templateColumns = Object.keys(firstItem);
+        }
+      } else {
+        this.templateColumns = [];
+      }
+      
+      this.cdr.detectChanges();
+    } catch (error: any) {
+      console.error('Error loading template columns:', error);
+      this.templateColumns = [];
+    }
   }
 
   // 利用可能な年を取得（現在年から前後10年）
@@ -5842,28 +5943,73 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.isCreatingTemplate = true;
     try {
-      // 年月をフォーマット（例: 2024年04月）
+      // 年月をフォーマット（例: 2030年10月）
       const year = parseInt(this.templateCreationYear);
       const month = parseInt(this.templateCreationMonth);
       const monthStr = month.toString().padStart(2, '0');
       const formattedMonth = `${year}年${monthStr}月`;
 
-      // データ種別に応じたファイル名を生成
+      // データ種別に応じたラベルを取得
       const dataTypeLabel = this.templateDataType === 'salary' ? '給与' : '賞与';
-      const fileName = `${formattedMonth}_${dataTypeLabel}.json`;
+      
+      // ソースファイル名（yyyy年mm月_給与.json または yyyy年mm月_賞与.json）
+      const sourceFileName = `yyyy年mm月_${dataTypeLabel}.json`;
+      
+      // ダウンロードファイル名（選択した年月でリネーム）
+      const downloadFileName = `${formattedMonth}_${dataTypeLabel}.json`;
 
-      // 空のJSONファイルを作成
-      const emptyData: any[] = [];
-      const jsonStr = JSON.stringify(emptyData, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // assetsディレクトリからテンプレートファイルを読み込む
+      try {
+        const templateData = await firstValueFrom(this.http.get<any>(`/assets/${sourceFileName}`));
+        
+      // テンプレートデータ内の"yyyy年mm月"キーを選択した年月に変更
+      const modifiedData: any = {};
+      let monthData: any[] = [];
+      
+      if (templateData && templateData['yyyy年mm月']) {
+        // "yyyy年mm月"キーの値を選択した年月のキーに変更
+        monthData = Array.isArray(templateData['yyyy年mm月']) ? [...templateData['yyyy年mm月']] : [];
+      } else if (templateData && typeof templateData === 'object') {
+        // 直接オブジェクトの場合
+        const firstKey = Object.keys(templateData)[0];
+        if (templateData[firstKey] && Array.isArray(templateData[firstKey])) {
+          monthData = [...templateData[firstKey]];
+        }
+      }
+      
+      // 追加された列を各データ項目に追加
+      if (monthData.length > 0 && this.addedColumns.length > 0) {
+        monthData = monthData.map(item => {
+          const newItem = { ...item };
+          this.addedColumns.forEach(column => {
+            // 追加された列にデフォルト値を設定（空文字列）
+            newItem[column] = '';
+          });
+          return newItem;
+        });
+      }
+      
+      modifiedData[formattedMonth] = monthData;
+        
+        // 変更したデータをJSONファイルとしてダウンロード
+        const jsonStr = JSON.stringify(modifiedData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = downloadFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (loadError: any) {
+        // ファイルが見つからない場合のエラーハンドリング
+        if (loadError.status === 404) {
+          alert(`テンプレートファイル（${sourceFileName}）が見つかりません。assetsディレクトリにファイルが存在するか確認してください。`);
+        } else {
+          throw loadError;
+        }
+      }
     } catch (error: any) {
       console.error('Error creating template:', error);
       alert(`エラーが発生しました: ${error.message || error}`);

@@ -752,7 +752,7 @@
                     name="templateDataType" 
                     value="salary"
                     [(ngModel)]="templateDataType"
-                    (change)="onTemplateDataTypeChange()">
+                    (ngModelChange)="templateDataType = 'salary'; onTemplateDataTypeChange()">
                   <span>給与</span>
                 </label>
                 <label class="radio-label">
@@ -761,9 +761,40 @@
                     name="templateDataType" 
                     value="bonus"
                     [(ngModel)]="templateDataType"
-                    (change)="onTemplateDataTypeChange()">
+                    (ngModelChange)="templateDataType = 'bonus'; onTemplateDataTypeChange()">
                   <span>賞与</span>
                 </label>
+              </div>
+            </div>
+            
+            <!-- 列のプレビュー（給与または賞与が選択されている場合） -->
+            <div *ngIf="templateDataType" class="column-preview-section">
+              <div class="column-preview-header">
+                <h3 class="column-preview-title">現在の列構成</h3>
+                <button 
+                  type="button"
+                  class="add-column-button"
+                  (click)="openAddColumnModal()">
+                  列を追加
+                </button>
+              </div>
+              <div class="column-preview-container">
+                <div *ngIf="templateColumns.length === 0 && addedColumns.length === 0" class="column-preview-loading">
+                  列情報を読み込んでいます...
+                </div>
+                <div *ngIf="templateColumns.length > 0 || addedColumns.length > 0" class="column-preview-list">
+                  <div *ngFor="let column of getAllColumns()" class="column-preview-item">
+                    {{ column }}
+                    <button 
+                      *ngIf="isAddedColumn(column)"
+                      type="button"
+                      class="remove-column-button"
+                      (click)="removeAddedColumn(column)"
+                      title="削除">
+                      ×
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -803,6 +834,45 @@
           </div>
         </div>
       </div>
+      
+      <!-- 列追加モーダル -->
+      <div *ngIf="isAddColumnModalOpen" class="modal-overlay" (click)="closeAddColumnModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="modal-title">列を追加</h2>
+            <div class="modal-header-actions">
+              <button class="modal-close-button" (click)="closeAddColumnModal()">×</button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">列名</label>
+              <input 
+                type="text"
+                class="form-input"
+                [(ngModel)]="newColumnName"
+                placeholder="列名を入力してください"
+                (keyup.enter)="addColumn()">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button 
+              type="button" 
+              class="modal-button secondary" 
+              (click)="closeAddColumnModal()">
+              キャンセル
+            </button>
+            <button 
+              type="button" 
+              class="modal-button primary" 
+              (click)="addColumn()"
+              [disabled]="!newColumnName || newColumnName.trim() === ''">
+              追加
+            </button>
+          </div>
+        </div>
+      </div>
+      
       <div *ngIf="selectedMenuId === 'insurance-exemption-settings'" class="settings-page-container">
         <app-import [showOnlyExemption]="true"></app-import>
       </div>
