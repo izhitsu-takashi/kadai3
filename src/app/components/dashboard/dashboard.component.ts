@@ -109,9 +109,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   insuranceRate: number = 0;
   insuranceRateDisplay: string = '';
   insuranceRateError: string = '';
-  healthInsuranceReduction: number = 0; // 保険料引き下げ額
-  healthInsuranceReductionDisplay: string = ''; // 表示用
-  healthInsuranceReductionError: string = ''; // エラーメッセージ
+  employeeBurdenRatio: number = 50; // 従業員負担割合（パーセンテージ、デフォルト50%）
+  employeeBurdenRatioDisplay: string = '50'; // 表示用
+  employeeBurdenRatioError: string = ''; // エラーメッセージ
   isHealthInsuranceSaved: boolean = false;
   isHealthInsuranceEditing: boolean = true;
   isHealthInsuranceLoaded: boolean = false; // 健康保険設定の読み込み完了フラグ
@@ -2241,58 +2241,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 退職済みの場合は全額を社員負担額とする
     if (isRetired) {
-    let personalBurden = 0;
+      let personalBurden = 0;
       
       // 健康保険料の本人負担額（全額）
-      let healthInsurancePersonal = healthInsurance;
-      
-      // 組合保険の場合、引き下げ額を適用
-      if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-        healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
-      }
-      
-      personalBurden += healthInsurancePersonal;
+      personalBurden += healthInsurance;
       personalBurden += welfarePension; // 厚生年金保険料（全額、ただし退職済みの場合は0円）
       personalBurden += nursingInsurance; // 介護保険料（全額）
       
       return personalBurden;
     }
     
-    // 在籍中の場合は折半計算（小数が0.51以上なら切り上げ、0.50以下なら切り捨て）
+    // 在籍中の場合は従業員負担割合に基づいて計算
     let personalBurden = 0;
     
-    // 小数部分に基づいて切り上げ/切り捨てを行うヘルパー関数
-    const roundHalf = (value: number): number => {
-      const half = value / 2;
-      // 小数部分を取得（100倍して100で割った余り）
-      const decimalPart = (Math.round(half * 100) % 100) / 100;
-      // 0.51以上なら切り上げ、0.50以下なら切り捨て
-      if (decimalPart >= 0.51) {
-        return Math.ceil(half);
-      } else {
-        return Math.floor(half);
-      }
-    };
+    // 従業員負担割合（パーセンテージを小数に変換）
+    const employeeRatio = this.employeeBurdenRatio / 100;
+    const employerRatio = 1 - employeeRatio; // 事業主負担割合
     
     // 健康保険料の本人負担額
-    let healthInsurancePersonal: number;
-    let actualReduction: number = 0; // 実際に差し引かれた額
-    healthInsurancePersonal = roundHalf(healthInsurance);
-    
-    // 組合保険の場合、引き下げ額を適用
-    if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-      // 実際に差し引かれた額を計算（本人負担額を超えない）
-      actualReduction = Math.min(healthInsurancePersonal, this.healthInsuranceReduction);
-      healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
-    }
-    
+    const healthInsurancePersonal = Math.round(healthInsurance * employeeRatio);
     personalBurden += healthInsurancePersonal;
     
     // 厚生年金保険料の本人負担額
-    personalBurden += roundHalf(welfarePension);
+    const welfarePensionPersonal = Math.round(welfarePension * employeeRatio);
+    personalBurden += welfarePensionPersonal;
     
     // 介護保険料の本人負担額
-    personalBurden += roundHalf(nursingInsurance);
+    const nursingInsurancePersonal = Math.round(nursingInsurance * employeeRatio);
+    personalBurden += nursingInsurancePersonal;
     
     return personalBurden;
   }
@@ -2341,52 +2317,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const welfarePension = this.getWelfarePension(employee, isBonus);
     const nursingInsurance = this.getNursingInsurance(employee, isBonus);
     
-    // 各保険料ごとに奇数チェックを行い、折半計算
+    // 在籍状況を取得
+    const employmentStatus = this.getEmployeeField(employee, '在籍状況');
+    const isRetired = employmentStatus === '退職済み';
+    
+    // 退職済みの場合は会社負担額は0
+    if (isRetired) {
+      return 0;
+    }
+    
+    // 在籍中の場合は従業員負担割合に基づいて計算
     let companyBurden = 0;
     
+    // 従業員負担割合（パーセンテージを小数に変換）
+    const employeeRatio = this.employeeBurdenRatio / 100;
+    const employerRatio = 1 - employeeRatio; // 事業主負担割合
+    
     // 健康保険料の会社負担額
-    let healthInsuranceCompany: number;
-    if (healthInsurance % 2 === 1) {
-      // 奇数の場合、1円引いて折半し、1円を足す
-      healthInsuranceCompany = Math.floor((healthInsurance - 1) / 2) + 1;
-    } else {
-      // 偶数の場合、通常通り折半
-      healthInsuranceCompany = Math.floor(healthInsurance / 2);
-    }
-    
-    // 組合保険の場合、実際に差し引かれた額を会社負担額に追加
-    if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-      // 本人負担額を計算（引き下げ前）
-      let healthInsurancePersonalBeforeReduction: number;
-      if (healthInsurance % 2 === 1) {
-        healthInsurancePersonalBeforeReduction = Math.floor((healthInsurance - 1) / 2);
-      } else {
-        healthInsurancePersonalBeforeReduction = Math.floor(healthInsurance / 2);
-      }
-      // 実際に差し引かれた額（本人負担額を超えない）
-      const actualReduction = Math.min(healthInsurancePersonalBeforeReduction, this.healthInsuranceReduction);
-      healthInsuranceCompany += actualReduction;
-    }
-    
+    const healthInsuranceCompany = Math.round(healthInsurance * employerRatio);
     companyBurden += healthInsuranceCompany;
     
     // 厚生年金保険料の会社負担額
-    if (welfarePension % 2 === 1) {
-      // 奇数の場合、1円引いて折半し、1円を足す
-      companyBurden += Math.floor((welfarePension - 1) / 2) + 1;
-    } else {
-      // 偶数の場合、通常通り折半
-      companyBurden += Math.floor(welfarePension / 2);
-    }
+    const welfarePensionCompany = Math.round(welfarePension * employerRatio);
+    companyBurden += welfarePensionCompany;
     
     // 介護保険料の会社負担額
-    if (nursingInsurance % 2 === 1) {
-      // 奇数の場合、1円引いて折半し、1円を足す
-      companyBurden += Math.floor((nursingInsurance - 1) / 2) + 1;
-    } else {
-      // 偶数の場合、通常通り折半
-      companyBurden += Math.floor(nursingInsurance / 2);
-    }
+    const nursingInsuranceCompany = Math.round(nursingInsurance * employerRatio);
+    companyBurden += nursingInsuranceCompany;
     
     return companyBurden;
   }
@@ -2713,89 +2670,41 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       
-      // 社員負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
+      // 社員負担額の合計を計算（折半割合に基づいて計算）
+      const employeeRatio = this.employeeBurdenRatio / 100;
+      const employerRatio = 1 - employeeRatio;
+      
       this.personalHealthInsurance = filteredEmployees.reduce((sum, emp) => {
         const healthInsurance = this.getHealthInsurance(emp, false);
-        let healthInsurancePersonal: number;
-        // 奇数の場合、1円引いて折半
-        if (healthInsurance % 2 === 1) {
-          healthInsurancePersonal = Math.floor((healthInsurance - 1) / 2);
-        } else {
-          healthInsurancePersonal = Math.floor(healthInsurance / 2);
-        }
-        // 組合保険の場合、引き下げ額を適用
-        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-          healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
-        }
-        return sum + healthInsurancePersonal;
+        return sum + Math.round(healthInsurance * employeeRatio);
       }, 0);
       
       this.personalWelfarePension = filteredEmployees.reduce((sum, emp) => {
         const welfarePension = this.getWelfarePension(emp, false);
-        // 奇数の場合、1円引いて折半
-        if (welfarePension % 2 === 1) {
-          return sum + Math.floor((welfarePension - 1) / 2);
-        } else {
-          return sum + Math.floor(welfarePension / 2);
-        }
+        return sum + Math.round(welfarePension * employeeRatio);
       }, 0);
       
       this.personalNursingInsurance = filteredEmployees.reduce((sum, emp) => {
         const nursingInsurance = this.getNursingInsurance(emp, false);
-        // 奇数の場合、1円引いて折半
-        if (nursingInsurance % 2 === 1) {
-          return sum + Math.floor((nursingInsurance - 1) / 2);
-        } else {
-          return sum + Math.floor(nursingInsurance / 2);
-        }
+        return sum + Math.round(nursingInsurance * employeeRatio);
       }, 0);
       
       this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
       
-      // 会社負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
+      // 会社負担額の合計を計算（折半割合に基づいて計算）
       this.companyHealthInsurance = filteredEmployees.reduce((sum, emp) => {
         const healthInsurance = this.getHealthInsurance(emp, false);
-        let healthInsuranceCompany: number;
-        // 奇数の場合、1円引いて折半し、1円を足す
-        if (healthInsurance % 2 === 1) {
-          healthInsuranceCompany = Math.floor((healthInsurance - 1) / 2) + 1;
-        } else {
-          healthInsuranceCompany = Math.floor(healthInsurance / 2);
-        }
-        // 組合保険の場合、実際に差し引かれた額を会社負担額に追加
-        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-          // 本人負担額を計算（引き下げ前）
-          let healthInsurancePersonalBeforeReduction: number;
-          if (healthInsurance % 2 === 1) {
-            healthInsurancePersonalBeforeReduction = Math.floor((healthInsurance - 1) / 2);
-          } else {
-            healthInsurancePersonalBeforeReduction = Math.floor(healthInsurance / 2);
-          }
-          // 実際に差し引かれた額（本人負担額を超えない）
-          const actualReduction = Math.min(healthInsurancePersonalBeforeReduction, this.healthInsuranceReduction);
-          healthInsuranceCompany += actualReduction;
-        }
-        return sum + healthInsuranceCompany;
+        return sum + Math.round(healthInsurance * employerRatio);
       }, 0);
       
       this.companyWelfarePension = filteredEmployees.reduce((sum, emp) => {
         const welfarePension = this.getWelfarePension(emp, false);
-        // 奇数の場合、1円引いて折半し、1円を足す
-        if (welfarePension % 2 === 1) {
-          return sum + Math.floor((welfarePension - 1) / 2) + 1;
-        } else {
-          return sum + Math.floor(welfarePension / 2);
-        }
+        return sum + Math.round(welfarePension * employerRatio);
       }, 0);
       
       this.companyNursingInsurance = filteredEmployees.reduce((sum, emp) => {
         const nursingInsurance = this.getNursingInsurance(emp, false);
-        // 奇数の場合、1円引いて折半し、1円を足す
-        if (nursingInsurance % 2 === 1) {
-          return sum + Math.floor((nursingInsurance - 1) / 2) + 1;
-        } else {
-          return sum + Math.floor(nursingInsurance / 2);
-        }
+        return sum + Math.round(nursingInsurance * employerRatio);
       }, 0);
       
       this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
@@ -2845,89 +2754,41 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
       
-      // 社員負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
+      // 社員負担額の合計を計算（折半割合に基づいて計算）
+      const employeeRatio = this.employeeBurdenRatio / 100;
+      const employerRatio = 1 - employeeRatio;
+      
       this.personalHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
         const healthInsurance = this.getHealthInsurance(bonus, true);
-        let healthInsurancePersonal: number;
-        // 奇数の場合、1円引いて折半
-        if (healthInsurance % 2 === 1) {
-          healthInsurancePersonal = Math.floor((healthInsurance - 1) / 2);
-        } else {
-          healthInsurancePersonal = Math.floor(healthInsurance / 2);
-        }
-        // 組合保険の場合、引き下げ額を適用
-        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-          healthInsurancePersonal = Math.max(0, healthInsurancePersonal - this.healthInsuranceReduction);
-        }
-        return sum + healthInsurancePersonal;
+        return sum + Math.round(healthInsurance * employeeRatio);
       }, 0);
       
       this.personalWelfarePension = filteredBonuses.reduce((sum, bonus) => {
         const welfarePension = this.getWelfarePension(bonus, true);
-        // 奇数の場合、1円引いて折半
-        if (welfarePension % 2 === 1) {
-          return sum + Math.floor((welfarePension - 1) / 2);
-        } else {
-          return sum + Math.floor(welfarePension / 2);
-        }
+        return sum + Math.round(welfarePension * employeeRatio);
       }, 0);
       
       this.personalNursingInsurance = filteredBonuses.reduce((sum, bonus) => {
         const nursingInsurance = this.getNursingInsurance(bonus, true);
-        // 奇数の場合、1円引いて折半
-        if (nursingInsurance % 2 === 1) {
-          return sum + Math.floor((nursingInsurance - 1) / 2);
-        } else {
-          return sum + Math.floor(nursingInsurance / 2);
-        }
+        return sum + Math.round(nursingInsurance * employeeRatio);
       }, 0);
       
       this.personalBurdenTotal = this.personalHealthInsurance + this.personalWelfarePension + this.personalNursingInsurance;
       
-      // 会社負担額の合計を計算（各項目別、奇数チェック付き、引き下げ額考慮）
+      // 会社負担額の合計を計算（折半割合に基づいて計算）
       this.companyHealthInsurance = filteredBonuses.reduce((sum, bonus) => {
         const healthInsurance = this.getHealthInsurance(bonus, true);
-        let healthInsuranceCompany: number;
-        // 奇数の場合、1円引いて折半し、1円を足す
-        if (healthInsurance % 2 === 1) {
-          healthInsuranceCompany = Math.floor((healthInsurance - 1) / 2) + 1;
-        } else {
-          healthInsuranceCompany = Math.floor(healthInsurance / 2);
-        }
-        // 組合保険の場合、実際に差し引かれた額を会社負担額に追加
-        if (this.healthInsuranceType === 'kumiai' && this.healthInsuranceReduction > 0) {
-          // 本人負担額を計算（引き下げ前）
-          let healthInsurancePersonalBeforeReduction: number;
-          if (healthInsurance % 2 === 1) {
-            healthInsurancePersonalBeforeReduction = Math.floor((healthInsurance - 1) / 2);
-          } else {
-            healthInsurancePersonalBeforeReduction = Math.floor(healthInsurance / 2);
-          }
-          // 実際に差し引かれた額（本人負担額を超えない）
-          const actualReduction = Math.min(healthInsurancePersonalBeforeReduction, this.healthInsuranceReduction);
-          healthInsuranceCompany += actualReduction;
-        }
-        return sum + healthInsuranceCompany;
+        return sum + Math.round(healthInsurance * employerRatio);
       }, 0);
       
       this.companyWelfarePension = filteredBonuses.reduce((sum, bonus) => {
         const welfarePension = this.getWelfarePension(bonus, true);
-        // 奇数の場合、1円引いて折半し、1円を足す
-        if (welfarePension % 2 === 1) {
-          return sum + Math.floor((welfarePension - 1) / 2) + 1;
-        } else {
-          return sum + Math.floor(welfarePension / 2);
-        }
+        return sum + Math.round(welfarePension * employerRatio);
       }, 0);
       
       this.companyNursingInsurance = filteredBonuses.reduce((sum, bonus) => {
         const nursingInsurance = this.getNursingInsurance(bonus, true);
-        // 奇数の場合、1円引いて折半し、1円を足す
-        if (nursingInsurance % 2 === 1) {
-          return sum + Math.floor((nursingInsurance - 1) / 2) + 1;
-        } else {
-          return sum + Math.floor(nursingInsurance / 2);
-        }
+        return sum + Math.round(nursingInsurance * employerRatio);
       }, 0);
       
       this.companyBurdenTotal = this.companyHealthInsurance + this.companyWelfarePension + this.companyNursingInsurance;
@@ -3200,8 +3061,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (type === 'kyokai') {
       this.insuranceRate = 0;
       this.insuranceRateDisplay = '';
-      this.healthInsuranceReduction = 0;
-      this.healthInsuranceReductionDisplay = '';
+      this.employeeBurdenRatio = 50;
+      this.employeeBurdenRatioDisplay = '50';
     } else {
       this.prefecture = '';
     }
@@ -3308,9 +3169,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.prefecture = data['prefecture'] || '';
         this.insuranceRate = data['insuranceRate'] || 0;
         this.insuranceRateDisplay = this.insuranceRate > 0 ? this.insuranceRate.toString() : '';
-        this.healthInsuranceReduction = data['healthInsuranceReduction'] !== undefined ? (data['healthInsuranceReduction'] || 0) : 0;
-        // 0の場合も「0」と表示する
-        this.healthInsuranceReductionDisplay = (this.healthInsuranceReduction !== undefined && this.healthInsuranceReduction !== null) ? this.healthInsuranceReduction.toString() : '0';
+        this.employeeBurdenRatio = data['employeeBurdenRatio'] !== undefined ? (data['employeeBurdenRatio'] || 50) : 50;
+        this.employeeBurdenRatioDisplay = (this.employeeBurdenRatio !== undefined && this.employeeBurdenRatio !== null) ? this.employeeBurdenRatio.toString() : '50';
         
         // 組合保険設定を読み込み
         this.gradeSettingType = data['gradeSettingType'] || 'kyokai';
@@ -3514,17 +3374,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
       
-      // 引き下げ額の空白チェック（空白の場合は0に設定）
-      if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
-        this.healthInsuranceReduction = 0;
-        this.healthInsuranceReductionDisplay = '';
+      // 折半割合の空白チェック（空白の場合は50に設定）
+      if (this.employeeBurdenRatioDisplay === '' || this.employeeBurdenRatioDisplay.trim() === '') {
+        this.employeeBurdenRatio = 50;
+        this.employeeBurdenRatioDisplay = '50';
       } else {
         // 表示値から数値を取得（空でない場合）
-        const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
-        if (!isNaN(numValue)) {
-          this.healthInsuranceReduction = numValue;
+        const numValue = parseFloat(this.employeeBurdenRatioDisplay.trim());
+        if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+          this.employeeBurdenRatio = numValue;
         } else {
-          this.healthInsuranceReduction = 0;
+          this.employeeBurdenRatio = 50;
+          this.employeeBurdenRatioDisplay = '50';
         }
       }
       
@@ -3540,15 +3401,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       
-      // 引き下げ額の最終確認（組合保険でない場合も含む）
-      if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
-        this.healthInsuranceReduction = 0;
+      // 折半割合の最終確認
+      if (this.employeeBurdenRatioDisplay === '' || this.employeeBurdenRatioDisplay.trim() === '') {
+        this.employeeBurdenRatio = 50;
+        this.employeeBurdenRatioDisplay = '50';
       } else {
-        const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
-        if (!isNaN(numValue)) {
-          this.healthInsuranceReduction = numValue;
+        const numValue = parseFloat(this.employeeBurdenRatioDisplay.trim());
+        if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+          this.employeeBurdenRatio = numValue;
         } else {
-          this.healthInsuranceReduction = 0;
+          this.employeeBurdenRatio = 50;
+          this.employeeBurdenRatioDisplay = '50';
         }
       }
       
@@ -3589,7 +3452,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         type: this.healthInsuranceType,
         prefecture: this.prefecture,
         insuranceRate: this.insuranceRate,
-        healthInsuranceReduction: (this.healthInsuranceReduction !== undefined && this.healthInsuranceReduction !== null) ? Math.max(0, this.healthInsuranceReduction) : 0,
+        employeeBurdenRatio: (this.employeeBurdenRatio !== undefined && this.employeeBurdenRatio !== null) ? Math.max(0, Math.min(100, this.employeeBurdenRatio)) : 50,
         updatedAt: new Date()
       };
       
@@ -3618,7 +3481,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 健康保険種別の変更を検知
       const healthInsuranceTypeChanged = oldType && oldType !== this.healthInsuranceType;
       
-      // 組合保険または協会けんぽの場合、保険料率または引き下げ額が変更されたのでデータを再計算
+      // 組合保険または協会けんぽの場合、保険料率または折半割合が変更されたのでデータを再計算
       if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
           (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
         // 健康保険の種類が変更された場合、すべての従業員データを再計算
@@ -3763,70 +3626,50 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isHealthInsuranceSaved = false;
   }
 
-  onHealthInsuranceReductionInput(event: any): void {
+  onEmployeeBurdenRatioBlur(): void {
     // エラーメッセージをクリア
-    this.healthInsuranceReductionError = '';
+    this.employeeBurdenRatioError = '';
     
     // 入力値を取得
-    let value = event.target.value;
+    let value = this.employeeBurdenRatioDisplay;
     
-    // 空の場合は0に設定して終了
-    if (value === '' || value === null || value === undefined) {
-      this.healthInsuranceReduction = 0;
-      this.healthInsuranceReductionDisplay = '';
+    // 空の場合は50に設定
+    if (value === '' || value === null || value === undefined || value.trim() === '') {
+      this.employeeBurdenRatio = 50;
+      this.employeeBurdenRatioDisplay = '50';
       return;
     }
     
-    // 数字以外の文字が含まれているかチェック
-    if (!/^[0-9]*$/.test(value)) {
-      this.healthInsuranceReductionError = '数字のみ入力できます';
-      event.target.value = this.healthInsuranceReductionDisplay;
+    // 数字以外の文字が含まれているかチェック（小数点も許可）
+    if (!/^[0-9]*\.?[0-9]*$/.test(value)) {
+      this.employeeBurdenRatioError = '数字のみ入力できます';
+      // 前の有効な値に戻す
+      this.employeeBurdenRatio = (this.employeeBurdenRatio !== undefined && this.employeeBurdenRatio !== null && !isNaN(this.employeeBurdenRatio)) ? this.employeeBurdenRatio : 50;
+      this.employeeBurdenRatioDisplay = this.employeeBurdenRatio.toString();
       return;
-    }
-    
-    // 先頭の0を削除
-    if (value.length > 1 && value[0] === '0') {
-      value = value.replace(/^0+/, '');
-      if (value === '') {
-        value = '0';
-      }
     }
     
     // 数値に変換
-    const numValue = parseInt(value, 10);
+    const numValue = parseFloat(value);
     
-    // 負の数のチェック
-    if (value.includes('-')) {
-      this.healthInsuranceReductionError = '負の数は入力できません';
-      event.target.value = this.healthInsuranceReductionDisplay;
+    // 範囲チェック（0-100の間）
+    if (isNaN(numValue)) {
+      this.employeeBurdenRatioError = '正しい数値を入力してください';
+      this.employeeBurdenRatio = (this.employeeBurdenRatio !== undefined && this.employeeBurdenRatio !== null && !isNaN(this.employeeBurdenRatio)) ? this.employeeBurdenRatio : 50;
+      this.employeeBurdenRatioDisplay = this.employeeBurdenRatio.toString();
       return;
     }
     
-    // 有効な数値の場合のみ更新
-    if (!isNaN(numValue)) {
-      this.healthInsuranceReduction = numValue;
-      this.healthInsuranceReductionDisplay = value;
-      event.target.value = value;
-    } else if (value !== '') {
-      // 無効な値の場合
-      this.healthInsuranceReductionError = '正しい数値を入力してください';
-      event.target.value = this.healthInsuranceReductionDisplay;
-    } else {
-      this.healthInsuranceReductionDisplay = value;
+    if (numValue < 0 || numValue > 100) {
+      this.employeeBurdenRatioError = '0から100の間の数値を入力してください';
+      this.employeeBurdenRatio = (this.employeeBurdenRatio !== undefined && this.employeeBurdenRatio !== null && !isNaN(this.employeeBurdenRatio)) ? this.employeeBurdenRatio : 50;
+      this.employeeBurdenRatioDisplay = this.employeeBurdenRatio.toString();
+      return;
     }
-  }
-
-  onHealthInsuranceReductionBlur(): void {
-    // エラーメッセージをクリア
-    this.healthInsuranceReductionError = '';
     
-    // フォーカスが外れた時に値を正規化
-    if (this.healthInsuranceReduction !== null && this.healthInsuranceReduction !== undefined && !isNaN(this.healthInsuranceReduction)) {
-      this.healthInsuranceReductionDisplay = this.healthInsuranceReduction.toString();
-    } else if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
-      this.healthInsuranceReduction = 0;
-      this.healthInsuranceReductionDisplay = '0';
-    }
+    // 値が有効な場合
+    this.employeeBurdenRatio = numValue;
+    this.employeeBurdenRatioDisplay = numValue.toString();
   }
 
   // 書類作成関連のメソッド
@@ -4803,16 +4646,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      // 引き下げ額の最終確認（空の場合は0に設定）
-      let healthInsuranceReductionValue = 0;
-      if (this.healthInsuranceReductionDisplay === '' || this.healthInsuranceReductionDisplay.trim() === '') {
-        healthInsuranceReductionValue = 0;
+      // 折半割合の最終確認（空の場合は50に設定）
+      let employeeBurdenRatioValue = 50;
+      if (this.employeeBurdenRatioDisplay === '' || this.employeeBurdenRatioDisplay.trim() === '') {
+        employeeBurdenRatioValue = 50;
       } else {
-        const numValue = parseInt(this.healthInsuranceReductionDisplay.trim(), 10);
-        if (!isNaN(numValue) && numValue >= 0) {
-          healthInsuranceReductionValue = numValue;
+        const numValue = parseFloat(this.employeeBurdenRatioDisplay.trim());
+        if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+          employeeBurdenRatioValue = numValue;
         } else {
-          healthInsuranceReductionValue = 0;
+          employeeBurdenRatioValue = 50;
         }
       }
       
@@ -4822,7 +4665,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         type: this.healthInsuranceType,
         prefecture: this.prefecture,
         insuranceRate: this.insuranceRate,
-        healthInsuranceReduction: healthInsuranceReductionValue,
+        employeeBurdenRatio: employeeBurdenRatioValue,
         updatedAt: new Date()
       };
       
@@ -4848,7 +4691,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       // 初期設定チェックを実行
       this.checkInitialSetup();
       
-      // 組合保険または協会けんぽの場合、保険料率または引き下げ額が変更されたのでデータを再計算
+      // 組合保険または協会けんぽの場合、保険料率または折半割合が変更されたのでデータを再計算
       if ((this.healthInsuranceType === 'kumiai' && this.insuranceRate > 0) ||
           (this.healthInsuranceType === 'kyokai' && this.prefecture)) {
         // テーブルデータを再読み込み（表示を更新）

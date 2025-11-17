@@ -389,26 +389,26 @@
               </div>
             </div>
 
-            <!-- 組合保険の場合の保険料引き下げ額入力 -->
+            <!-- 従業員負担の保険料折半割合変更（組合健保専用） -->
             <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
-              <label for="healthInsuranceReduction" class="form-label">従業員負担の保険料引き下げ額</label>
+              <label for="employeeBurdenRatio" class="form-label">従業員負担の保険料折半割合</label>
               <div class="insurance-rate-input-wrapper">
                 <input 
                   type="text" 
-                  id="healthInsuranceReduction" 
+                  id="employeeBurdenRatio" 
                   class="form-input"
-                  [class.error]="healthInsuranceReductionError"
-                  [value]="healthInsuranceReductionDisplay"
-                  name="healthInsuranceReduction"
+                  [class.error]="employeeBurdenRatioError"
+                  [(ngModel)]="employeeBurdenRatioDisplay"
+                  name="employeeBurdenRatio"
                   [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
-                  placeholder="引き下げ額を入力"
-                  (input)="onHealthInsuranceReductionInput($event)"
-                  (blur)="onHealthInsuranceReductionBlur()">
-                <span class="percentage-symbol">円</span>
+                  placeholder="割合を入力"
+                  (blur)="onEmployeeBurdenRatioBlur()">
+                <span class="percentage-symbol">%</span>
               </div>
-              <div *ngIf="healthInsuranceReductionError" class="error-message">
-                {{ healthInsuranceReductionError }}
+              <div *ngIf="employeeBurdenRatioError" class="error-message">
+                {{ employeeBurdenRatioError }}
               </div>
+              <p class="form-help-text">※従業員負担割合を入力してください（例：40%と入力すると、従業員負担4割、事業主負担6割で計算されます）</p>
             </div>
 
             <!-- 組合保険の場合の等級設定 -->
