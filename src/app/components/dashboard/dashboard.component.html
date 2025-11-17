@@ -683,6 +683,83 @@
       <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">
         <app-import></app-import>
       </div>
+      <div *ngIf="selectedMenuId === 'insurer-inquiry'" class="settings-page-container">
+        <div class="insurer-inquiry-container">
+          <h2 class="form-title">保険者情報照会</h2>
+          <p class="insurer-inquiry-description">各保険の保険者種別がどのように定義されているかを説明します。</p>
+          
+          <div class="insurer-cards">
+            <!-- 健康保険者種別 -->
+            <div class="insurer-card">
+              <div class="insurer-card-header">
+                <h3 class="insurer-card-title">健康保険者種別</h3>
+              </div>
+              <div class="insurer-card-content">
+                <p class="insurer-card-description">従業員の健康保険の加入状況を表す種別です。</p>
+                <div class="insurer-type-list">
+                  <div class="insurer-type-item">
+                    <div class="insurer-type-label">通常の被保険者</div>
+                    <div class="insurer-type-description">健康保険に加入している従業員。健康保険料が計算されます。</div>
+                  </div>
+                  <div class="insurer-type-item special">
+                    <div class="insurer-type-label">健康保険被扶養者</div>
+                    <div class="insurer-type-description">配偶者などの被扶養者として健康保険に加入している従業員。健康保険料は0円になります。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 介護保険者種別 -->
+            <div class="insurer-card">
+              <div class="insurer-card-header">
+                <h3 class="insurer-card-title">介護保険者種別</h3>
+              </div>
+              <div class="insurer-card-content">
+                <p class="insurer-card-description">従業員の介護保険の加入状況を表す種別です。健康保険の設定によって参照する項目が異なります。</p>
+                <div class="insurer-type-list">
+                  <div class="insurer-type-item">
+                    <div class="insurer-type-label">協会けんぽの場合</div>
+                    <div class="insurer-type-description">「介護保険者種別」フィールドを参照します。</div>
+                  </div>
+                  <div class="insurer-type-item">
+                    <div class="insurer-type-label">組合保険の場合</div>
+                    <div class="insurer-type-description">「特定被保険者の実装」が「有」の場合は「介護保険者種別（組合）」フィールドを参照します。「無」の場合は「介護保険者種別」フィールドを参照します。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 厚生年金保険者種別 -->
+            <div class="insurer-card">
+              <div class="insurer-card-header">
+                <h3 class="insurer-card-title">厚生年金保険者種別</h3>
+              </div>
+              <div class="insurer-card-content">
+                <p class="insurer-card-description">従業員の厚生年金保険の加入状況を表す種別です。</p>
+                <div class="insurer-type-list">
+                  <div class="insurer-type-item">
+                    <div class="insurer-type-label">通常の被保険者</div>
+                    <div class="insurer-type-description">厚生年金保険に加入している従業員。厚生年金保険料が計算されます。</div>
+                  </div>
+                  <div class="insurer-type-item special">
+                    <div class="insurer-type-label">国民年金第3号被保険者</div>
+                    <div class="insurer-type-description">配偶者の厚生年金保険の被扶養者として国民年金第3号被保険者となっている従業員。厚生年金保険料は0円になります。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="insurer-note">
+            <p class="insurer-note-title">※ 注意事項</p>
+            <ul class="insurer-note-list">
+              <li>保険者種別は、社員データの各フィールドに設定されている値に基づいて表示されます。</li>
+              <li>保険料が0円になる種別（健康保険被扶養者、国民年金第3号被保険者）は、保険料計算時に自動的に除外されます。</li>
+              <li>介護保険者種別は、健康保険設定の「健康保険種別」と「特定被保険者の実装」の設定によって参照するフィールドが変わります。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
       <div *ngIf="selectedMenuId === 'reports'" class="reports-container">
         <div class="report-filter-container">
           <div class="report-table-type-selector">
@@ -789,7 +866,7 @@
         </div>
       </div>
       
-      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'reports'" class="page-message">
+      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'insurer-inquiry' && selectedMenuId !== 'reports'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>

@@ -2412,3 +2412,124 @@
   font-size: 0.875rem;
   color: #718096;
 }
+
+/* 保険者情報照会ページ */
+.insurer-inquiry-container {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.insurer-inquiry-description {
+  font-size: 1rem;
+  color: #4a5568;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.insurer-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.insurer-card {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.insurer-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.insurer-card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1.25rem 1.5rem;
+}
+
+.insurer-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.insurer-card-content {
+  padding: 1.5rem;
+}
+
+.insurer-card-description {
+  font-size: 0.95rem;
+  color: #4a5568;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.6;
+}
+
+.insurer-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.insurer-type-item {
+  padding: 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  border-left: 4px solid #667eea;
+}
+
+.insurer-type-item.special {
+  border-left-color: #f56565;
+  background: #fff5f5;
+}
+
+.insurer-type-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.insurer-type-description {
+  font-size: 0.9rem;
+  color: #4a5568;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.insurer-note {
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.insurer-note-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 0.75rem 0;
+}
+
+.insurer-note-list {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+  line-height: 1.8;
+}
+
+.insurer-note-list li {
+  margin-bottom: 0.5rem;
+}
+
+.insurer-note-list li:last-child {
+  margin-bottom: 0;
+}
