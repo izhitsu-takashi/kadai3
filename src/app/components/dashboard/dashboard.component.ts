@@ -2366,8 +2366,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return 0;
     }
     
+    // 健康保険が「組合保険」かどうかをチェック（設定と社員データの両方を確認）
+    const isKumiaiSetting = this.healthInsuranceType === 'kumiai';
+    const healthInsuranceType = this.getEmployeeField(employee, '健康保険者種別');
+    const isKumiaiEmployee = healthInsuranceType === '組合保険' || healthInsuranceType === 'kumiai';
+    const isKumiai = isKumiaiSetting || isKumiaiEmployee;
+    
+    // 特定被保険者の実装設定が「有」かどうかをチェック
+    const hasSpecificInsuredEnabled = this.hasSpecificInsured;
+    
+    // 介護保険者種別（組合）を取得
+    const nursingInsuranceTypeKumiai = this.getEmployeeField(employee, '介護保険者種別（組合）');
+    const isTokuteiHihokensha = nursingInsuranceTypeKumiai === '特定被保険者';
+    
     // 年齢を取得（型アサーションを使用）
     const age = (employee as any).年齢 ?? (employee as any).age;
+    
+    // 健康保険が「組合保険」かつ特定被保険者の実装設定が「有」かつ介護保険者種別（組合）が「特定被保険者」の場合は、年齢に関係なく介護保険料を徴収
+    if (isKumiai && hasSpecificInsuredEnabled && isTokuteiHihokensha) {
+      // 特定被保険者の場合は年齢に関係なく保険料率設定から計算
+      if (this.nursingInsuranceRate > 0) {
+        const baseAmount = isBonus ? this.getStandardBonus(employee) : this.getStandardSalary(employee);
+        // 保険料率はパーセンテージなので、100で割ってから基準額を掛ける
+        // 小数第2位まで計算（100倍してから100で割る）
+        return Math.round(baseAmount * (this.nursingInsuranceRate / 100) * 100) / 100;
+      }
+      // 設定がない場合は既存のデータを使用
+      return employee.介護保険料 ?? employee.nursingInsurance ?? 0;
+    }
     
     // 40歳未満の場合は介護保険料は0
     if (age === undefined || age === null || age < 40) {
