@@ -174,9 +174,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isDownloadingSalary: boolean = false;
   isDownloadingBonus: boolean = false;
   isDownloadingGrade: boolean = false;
-  isDownloadingSalaryTemplate: boolean = false;
-  isDownloadingBonusTemplate: boolean = false;
   isDownloadingGradeTemplate: boolean = false;
+  
+  // テンプレート作成用
+  templateDataType: 'salary' | 'bonus' | null = null;
+  templateCreationYear: string = '';
+  templateCreationMonth: string = '';
+  isCreatingTemplate: boolean = false;
   
   // アップロード用フラグ
   isUploadingSalary: boolean = false;
@@ -2423,8 +2427,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     // 退職済みの場合は全額を社員負担額とする
     if (isRetired) {
-      let personalBurden = 0;
-      
+    let personalBurden = 0;
+    
       // 健康保険料の本人負担額（全額）
       personalBurden += healthInsurance;
       personalBurden += welfarePension; // 厚生年金保険料（全額、ただし退職済みの場合は0円）
@@ -5776,68 +5780,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // 給与テンプレートをダウンロード
-  async downloadSalaryTemplate(): Promise<void> {
-    this.isDownloadingSalaryTemplate = true;
-    try {
-      // テンプレートファイルを読み込む
-      const templateData = await firstValueFrom(this.http.get<any>('/assets/給与テンプレート.json'));
-      if (!templateData) {
-        alert('テンプレートファイルが読み込めませんでした。');
-        this.isDownloadingSalaryTemplate = false;
-        return;
-      }
-
-      // JSONファイルとしてダウンロード
-      const jsonStr = JSON.stringify(templateData, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = '給与テンプレート.json';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error: any) {
-      console.error('Error downloading salary template:', error);
-      alert(`エラーが発生しました: ${error.message || error}`);
-    } finally {
-      this.isDownloadingSalaryTemplate = false;
-    }
-  }
-
-  // 賞与テンプレートをダウンロード
-  async downloadBonusTemplate(): Promise<void> {
-    this.isDownloadingBonusTemplate = true;
-    try {
-      // テンプレートファイルを読み込む
-      const templateData = await firstValueFrom(this.http.get<any>('/assets/賞与テンプレート.json'));
-      if (!templateData) {
-        alert('テンプレートファイルが読み込めませんでした。');
-        this.isDownloadingBonusTemplate = false;
-        return;
-      }
-
-      // JSONファイルとしてダウンロード
-      const jsonStr = JSON.stringify(templateData, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = '賞与テンプレート.json';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error: any) {
-      console.error('Error downloading bonus template:', error);
-      alert(`エラーが発生しました: ${error.message || error}`);
-    } finally {
-      this.isDownloadingBonusTemplate = false;
-    }
-  }
-
   // 等級テンプレートをダウンロード
   async downloadGradeTemplate(): Promise<void> {
     this.isDownloadingGradeTemplate = true;
@@ -5866,6 +5808,67 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       alert(`エラーが発生しました: ${error.message || error}`);
     } finally {
       this.isDownloadingGradeTemplate = false;
+    }
+  }
+
+  // テンプレートデータ種別変更時の処理
+  onTemplateDataTypeChange(): void {
+    // データ種別が変更されたら、選択されている年月をリセット
+    this.templateCreationYear = '';
+    this.templateCreationMonth = '';
+  }
+
+  // 利用可能な年を取得（現在年から前後10年）
+  getAvailableYears(): number[] {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let i = currentYear - 10; i <= currentYear + 10; i++) {
+      years.push(i);
+    }
+    return years;
+  }
+
+  // 利用可能な月を取得（1月から12月）
+  getAvailableMonths(): number[] {
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  }
+
+  // テンプレートを作成
+  async createTemplate(): Promise<void> {
+    if (!this.templateDataType || !this.templateCreationYear || !this.templateCreationMonth) {
+      alert('データ種別と作成年月を選択してください。');
+      return;
+    }
+
+    this.isCreatingTemplate = true;
+    try {
+      // 年月をフォーマット（例: 2024年04月）
+      const year = parseInt(this.templateCreationYear);
+      const month = parseInt(this.templateCreationMonth);
+      const monthStr = month.toString().padStart(2, '0');
+      const formattedMonth = `${year}年${monthStr}月`;
+
+      // データ種別に応じたファイル名を生成
+      const dataTypeLabel = this.templateDataType === 'salary' ? '給与' : '賞与';
+      const fileName = `${formattedMonth}_${dataTypeLabel}.json`;
+
+      // 空のJSONファイルを作成
+      const emptyData: any[] = [];
+      const jsonStr = JSON.stringify(emptyData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error creating template:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isCreatingTemplate = false;
     }
   }
 

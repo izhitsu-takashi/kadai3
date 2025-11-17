@@ -653,7 +653,7 @@
       <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">
         <div class="employee-settings-container">
           <h2 class="form-title">社員情報設定</h2>
-          <p class="employee-settings-description">現在設定されている給与データ、賞与データ、等級データをJSONファイルとしてダウンロードできます。また、テンプレートファイルもダウンロードできます。</p>
+          <p class="employee-settings-description">現在設定されている給与データ、賞与データ、等級データをJSONファイルとしてダウンロードできます。</p>
           
           <div class="download-section">
             <div class="download-card">
@@ -665,13 +665,6 @@
                 (click)="downloadSalaryData()"
                 [disabled]="isDownloadingSalary">
                 {{ isDownloadingSalary ? 'ダウンロード中...' : '給与データをダウンロード' }}
-              </button>
-              <button 
-                type="button"
-                class="download-button template-button"
-                (click)="downloadSalaryTemplate()"
-                [disabled]="isDownloadingSalaryTemplate">
-                {{ isDownloadingSalaryTemplate ? 'ダウンロード中...' : '給与テンプレートをダウンロード' }}
               </button>
               <div class="upload-section">
                 <input 
@@ -696,13 +689,6 @@
                 (click)="downloadBonusData()"
                 [disabled]="isDownloadingBonus">
                 {{ isDownloadingBonus ? 'ダウンロード中...' : '賞与データをダウンロード' }}
-              </button>
-              <button 
-                type="button"
-                class="download-button template-button"
-                (click)="downloadBonusTemplate()"
-                [disabled]="isDownloadingBonusTemplate">
-                {{ isDownloadingBonusTemplate ? 'ダウンロード中...' : '賞与テンプレートをダウンロード' }}
               </button>
               <div class="upload-section">
                 <input 
@@ -747,6 +733,72 @@
                   <span *ngIf="isUploadingGrade">アップロード中...</span>
                 </label>
               </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 給与/賞与テンプレートファイル作成コンテナ -->
+        <div class="template-creation-container">
+          <h2 class="form-title">給与/賞与テンプレートファイル作成</h2>
+          <p class="template-creation-description">給与データまたは賞与データからテンプレートファイルを作成できます。</p>
+          
+          <div class="template-creation-form">
+            <div class="form-group">
+              <label class="form-label">データ種別</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="templateDataType" 
+                    value="salary"
+                    [(ngModel)]="templateDataType"
+                    (change)="onTemplateDataTypeChange()">
+                  <span>給与</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="templateDataType" 
+                    value="bonus"
+                    [(ngModel)]="templateDataType"
+                    (change)="onTemplateDataTypeChange()">
+                  <span>賞与</span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">作成年月</label>
+              <div class="year-month-selector">
+                <select 
+                  class="form-input year-select"
+                  [(ngModel)]="templateCreationYear"
+                  [disabled]="!templateDataType">
+                  <option value="">年を選択</option>
+                  <option *ngFor="let year of getAvailableYears()" [value]="year">
+                    {{ year }}年
+                  </option>
+                </select>
+                <select 
+                  class="form-input month-select"
+                  [(ngModel)]="templateCreationMonth"
+                  [disabled]="!templateDataType || !templateCreationYear">
+                  <option value="">月を選択</option>
+                  <option *ngFor="let month of getAvailableMonths()" [value]="month">
+                    {{ month }}月
+                  </option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="template-creation-actions">
+              <button 
+                type="button"
+                class="template-creation-button"
+                (click)="createTemplate()"
+                [disabled]="!templateDataType || !templateCreationYear || !templateCreationMonth || isCreatingTemplate">
+                {{ isCreatingTemplate ? '作成中...' : 'テンプレートを作成' }}
+              </button>
             </div>
           </div>
         </div>
