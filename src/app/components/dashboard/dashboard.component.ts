@@ -157,6 +157,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private allBonusesData: Bonus[] = []; // 全期間の賞与データを保持
   private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ（健康保険・介護保険用）
   private welfarePensionGradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 厚生年金保険等級データ
+  private insuranceExemptions: Array<{ employeeId: number | string; startMonth: string; endMonth: string; reason: string }> = []; // 保険料免除設定
   
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
@@ -309,6 +310,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadKenpoRates();
     // 保険料率設定を読み込む
     this.loadInsuranceRateSettings();
+    // 保険料免除設定を読み込む
+    this.loadInsuranceExemptions();
     // 書類作成用の部署リストを読み込む
     this.loadDepartmentsForDocuments();
     // 書類作成用の期間リストを読み込む
@@ -2017,6 +2020,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getHealthInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
+    // 保険料免除チェック
+    if (this.isInsuranceExempted(employee)) {
+      return 0;
+    }
+    
     // 健康保険者種別が「健康保険被扶養者」の場合は健康保険料を0円にする
     const healthInsuranceType = this.getEmployeeField(employee, '健康保険者種別');
     if (healthInsuranceType === '健康保険被扶養者') {
@@ -2139,6 +2147,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getWelfarePension(employee: Employee | Bonus, isBonus: boolean = false): number {
+    // 保険料免除チェック
+    if (this.isInsuranceExempted(employee)) {
+      return 0;
+    }
+    
     // 在籍状況が「退職済み」の場合は厚生年金保険料を0円にする
     const employmentStatus = this.getEmployeeField(employee, '在籍状況');
     if (employmentStatus === '退職済み') {
@@ -2191,6 +2204,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getNursingInsurance(employee: Employee | Bonus, isBonus: boolean = false): number {
+    // 保険料免除チェック
+    if (this.isInsuranceExempted(employee)) {
+      return 0;
+    }
+    
     // 年齢を取得（型アサーションを使用）
     const age = (employee as any).年齢 ?? (employee as any).age;
     
@@ -3412,6 +3430,66 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.isInitialDataLoading = false;
       this.cdr.detectChanges();
     }
+  }
+
+  /**
+   * 保険料免除設定を読み込む
+   */
+  async loadInsuranceExemptions(): Promise<void> {
+    const db = this.firestoreService.getFirestore();
+    if (!db) {
+      return;
+    }
+
+    try {
+      const { collection, getDocs } = await import('firebase/firestore');
+      const exemptionsRef = collection(db, 'insuranceExemptions');
+      const querySnapshot = await getDocs(exemptionsRef);
+      
+      this.insuranceExemptions = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          employeeId: data['employeeId'],
+          startMonth: data['startMonth'],
+          endMonth: data['endMonth'],
+          reason: data['reason']
+        };
+      });
+    } catch (error) {
+      console.error('Error loading insurance exemptions:', error);
+    }
+  }
+
+  /**
+   * 社員が指定月に保険料免除対象かどうかをチェック
+   */
+  private isInsuranceExempted(employee: Employee | Bonus): boolean {
+    if (this.insuranceExemptions.length === 0) {
+      return false;
+    }
+    
+    const employeeId = this.getEmployeeId(employee);
+    const month = employee.月 || employee.month;
+    if (!month) {
+      return false;
+    }
+    
+    const monthNum = this.monthToNumber(month);
+    
+    // 該当社員の免除設定を検索
+    for (const exemption of this.insuranceExemptions) {
+      if (String(exemption.employeeId) === String(employeeId)) {
+        const startNum = this.monthToNumber(exemption.startMonth);
+        const endNum = this.monthToNumber(exemption.endMonth);
+        
+        // 現在の月が免除期間内かチェック
+        if (monthNum >= startNum && monthNum <= endNum) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 
   async onHealthInsuranceSubmit(): Promise<void> {
