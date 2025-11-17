@@ -77,62 +77,6 @@
               </select>
             </div>
             <div class="filter-item">
-              <label for="health-insurance-filter" class="filter-label">健康保険:</label>
-              <select 
-                id="health-insurance-filter" 
-                class="filter-select"
-                [value]="filterHealthInsurance"
-                [disabled]="isInitialDataLoading"
-                (change)="filterHealthInsurance = $any($event.target).value; onFilterChange()">
-                <option value="">すべて</option>
-                <option value="健康保険被保険者">健康保険被保険者</option>
-                <option value="健康保険被扶養者">健康保険被扶養者</option>
-                <option value="任意継続被保険者">任意継続被保険者</option>
-              </select>
-            </div>
-            <div class="filter-item">
-              <label for="nursing-insurance-filter" class="filter-label">介護保険:</label>
-              <select 
-                id="nursing-insurance-filter" 
-                class="filter-select"
-                [value]="filterNursingInsurance"
-                [disabled]="isInitialDataLoading"
-                (change)="filterNursingInsurance = $any($event.target).value; onFilterChange()">
-                <option value="">すべて</option>
-                <option value="介護保険第1号被保険者">介護保険第1号被保険者</option>
-                <option value="介護保険第2号被保険者">介護保険第2号被保険者</option>
-                <option value="任意継続被保険者">任意継続被保険者</option>
-                <option value="介護保険の被保険者でない者">介護保険の被保険者でない者</option>
-                <option *ngIf="healthInsuranceType === 'kumiai'" value="特定被保険者（組合健保のみ）">特定被保険者（組合健保のみ）</option>
-              </select>
-            </div>
-            <div class="filter-item">
-              <label for="welfare-pension-filter" class="filter-label">厚生年金保険:</label>
-              <select 
-                id="welfare-pension-filter" 
-                class="filter-select"
-                [value]="filterWelfarePension"
-                [disabled]="isInitialDataLoading"
-                (change)="filterWelfarePension = $any($event.target).value; onFilterChange()">
-                <option value="">すべて</option>
-                <option value="国民年金第2号被保険者">国民年金第2号被保険者</option>
-                <option value="国民年金第3号被保険者">国民年金第3号被保険者</option>
-              </select>
-            </div>
-            <div class="filter-item">
-              <label for="employment-status-filter" class="filter-label">在籍状況:</label>
-              <select 
-                id="employment-status-filter" 
-                class="filter-select"
-                [value]="filterEmploymentStatus"
-                [disabled]="isInitialDataLoading"
-                (change)="filterEmploymentStatus = $any($event.target).value; onFilterChange()">
-                <option value="">すべて</option>
-                <option value="在籍中">在籍中</option>
-                <option value="退職済み">退職済み</option>
-              </select>
-            </div>
-            <div class="filter-item">
               <div class="table-type-selector">
                 <button 
                   type="button"
@@ -151,6 +95,24 @@
                   賞与
                 </button>
               </div>
+            </div>
+            <div class="filter-item">
+              <button 
+                type="button"
+                class="column-customization-button"
+                [disabled]="isInitialDataLoading"
+                (click)="openColumnCustomizationModal()">
+                表示列
+              </button>
+            </div>
+            <div class="filter-item">
+              <button 
+                type="button"
+                class="filter-customization-button"
+                [disabled]="isInitialDataLoading"
+                (click)="openFilterCustomizationModal()">
+                フィルター
+              </button>
             </div>
             <div class="filter-item">
               <button 
@@ -189,14 +151,17 @@
             </thead>
             <tbody>
               <tr *ngFor="let employee of sortedEmployees" (click)="!isInitialDataLoading && openEmployeeModal(employee)" class="employee-row" [class.disabled]="isInitialDataLoading">
-                <td>{{ getEmployeeId(employee) }}</td>
-                <td>{{ getEmployeeName(employee) }}</td>
-                <td>{{ getSalary(employee) | number }}</td>
-                <td>{{ getStandardSalary(employee) | number }}</td>
-                <td>{{ getHealthInsurance(employee, false) | number:'1.0-2' }}</td>
-                <td>{{ getWelfarePension(employee, false) | number:'1.0-2' }}</td>
-                <td>{{ getNursingInsurance(employee, false) | number:'1.0-2' }}</td>
-                <td>{{ getPersonalBurden(employee, false) | number }}</td>
+                <td *ngFor="let column of columns">
+                  <span *ngIf="column.type === 'number'">
+                    {{ getColumnValue(employee, column.key) | number }}<span *ngIf="column.key.includes('料') || column.key.includes('額') || column.key.includes('給与') || column.key.includes('賞与')">円</span>
+                  </span>
+                  <span *ngIf="column.type === 'date'">
+                    {{ formatDate(getColumnValue(employee, column.key)) }}
+                  </span>
+                  <span *ngIf="column.type !== 'number' && column.type !== 'date'">
+                    {{ getColumnValue(employee, column.key) }}
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -216,14 +181,17 @@
             </thead>
             <tbody>
               <tr *ngFor="let bonus of sortedBonuses" (click)="!isInitialDataLoading && openEmployeeModal(bonus)" class="employee-row" [class.disabled]="isInitialDataLoading">
-                <td>{{ getEmployeeId(bonus) }}</td>
-                <td>{{ getEmployeeName(bonus) }}</td>
-                <td>{{ getBonus(bonus) | number }}</td>
-                <td>{{ getStandardBonus(bonus) | number }}</td>
-                <td>{{ getHealthInsurance(bonus, true) | number:'1.0-2' }}</td>
-                <td>{{ getWelfarePension(bonus, true) | number:'1.0-2' }}</td>
-                <td>{{ getNursingInsurance(bonus, true) | number:'1.0-2' }}</td>
-                <td>{{ getPersonalBurden(bonus, true) | number }}</td>
+                <td *ngFor="let column of columns">
+                  <span *ngIf="column.type === 'number'">
+                    {{ getColumnValue(bonus, column.key) | number }}<span *ngIf="column.key.includes('料') || column.key.includes('額') || column.key.includes('給与') || column.key.includes('賞与')">円</span>
+                  </span>
+                  <span *ngIf="column.type === 'date'">
+                    {{ formatDate(getColumnValue(bonus, column.key)) }}
+                  </span>
+                  <span *ngIf="column.type !== 'number' && column.type !== 'date'">
+                    {{ getColumnValue(bonus, column.key) }}
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -552,7 +520,7 @@
       <div *ngIf="selectedMenuId === 'insurance-rate-inquiry'" class="settings-page-container">
         <div class="insurance-rate-inquiry-container">
           <div class="inquiry-header">
-            <h2 class="inquiry-title">保険料率照会</h2>
+          <h2 class="inquiry-title">保険料率照会</h2>
             <button 
               *ngIf="!isInsuranceRateInquiryEditing" 
               type="button"
@@ -1091,6 +1059,81 @@
           <span class="info-value">{{ getWelfarePensionGrade(selectedEmployee) > 0 ? getWelfarePensionGrade(selectedEmployee) : '-' }}</span>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 表示列カスタマイズモーダル -->
+<div *ngIf="isColumnCustomizationModalOpen" class="modal-overlay" (click)="closeColumnCustomizationModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">表示列の選択</h2>
+      <div class="modal-header-actions">
+        <button class="modal-close-button" (click)="closeColumnCustomizationModal()">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="column-customization-container">
+        <p class="column-customization-description">表示したい列にチェックを入れてください。</p>
+        <div class="column-checkbox-list">
+          <label *ngFor="let column of availableColumns" class="column-checkbox-item">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="column.visible"
+              (change)="applyFilters()">
+            <span>{{ column.label }}</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="modal-button primary" (click)="closeColumnCustomizationModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- フィルターカスタマイズモーダル -->
+<div *ngIf="isFilterCustomizationModalOpen" class="modal-overlay" (click)="closeFilterCustomizationModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">フィルターの設定</h2>
+      <div class="modal-header-actions">
+        <button class="modal-close-button" (click)="closeFilterCustomizationModal()">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="filter-customization-container">
+        <p class="filter-customization-description">フィルターを適用したい列を選択し、値を選択してください。</p>
+        <div class="filter-list">
+          <ng-container *ngFor="let column of availableColumns">
+            <div *ngIf="column.visible" class="filter-item">
+              <div class="filter-item-header">
+                <label class="filter-checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="column.filterable"
+                    (change)="updateFilterValues(column.key)">
+                  <span>{{ column.label }}</span>
+                </label>
+              </div>
+              <div *ngIf="column.filterable" class="filter-item-content">
+                <select 
+                  class="filter-select"
+                  [(ngModel)]="activeCustomFilters[column.key]"
+                  (change)="applyFilters()">
+                  <option [value]="null">すべて</option>
+                  <option *ngFor="let value of customFilters[column.key]" [value]="value">
+                    {{ value }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="modal-button primary" (click)="closeFilterCustomizationModal()">閉じる</button>
     </div>
   </div>
 </div>

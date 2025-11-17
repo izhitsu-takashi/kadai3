@@ -294,7 +294,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'personalBurden', label: '本人負担額', type: 'number', sortable: false }
   ];
   
+  // 表示列カスタマイズ用
+  isColumnCustomizationModalOpen: boolean = false;
+  isFilterCustomizationModalOpen: boolean = false;
+  availableColumns: Array<{ key: string; label: string; type: string; sortable: boolean; visible: boolean; filterable: boolean }> = [];
+  customFilters: { [key: string]: any[] } = {}; // カスタムフィルターの値
+  activeCustomFilters: { [key: string]: any } = {}; // 現在適用されているカスタムフィルター
+  
   get columns() {
+    // 表示列カスタマイズが有効な場合は、visibleがtrueの列のみを返す
+    if (this.availableColumns.length > 0) {
+      const visibleColumns = this.availableColumns.filter(col => col.visible);
+      // 表示列が選択されていない場合は、デフォルト列を返す
+      if (visibleColumns.length === 0) {
+        return this.tableType === 'salary' ? this.salaryColumns : this.bonusColumns;
+      }
+      return visibleColumns;
+    }
     return this.tableType === 'salary' ? this.salaryColumns : this.bonusColumns;
   }
 
@@ -1172,7 +1188,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   applyFilters(): void {
-    let filtered = [...this.employees];
+    let filtered = this.tableType === 'salary' ? [...this.employees] : [...this.bonuses];
 
     // 部署でフィルター
     if (this.filterDepartment) {
@@ -1271,7 +1287,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    this.sortedEmployees = filtered;
+    // カスタムフィルターを適用
+    filtered = this.applyCustomFilters(filtered);
+
+    if (this.tableType === 'salary') {
+      this.sortedEmployees = filtered as Employee[];
+    } else {
+      this.sortedBonuses = filtered as Bonus[];
+    }
     // フィルター適用フラグを設定
     this.isFilterApplied = true;
   }
@@ -1388,6 +1411,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
+    // カスタムフィルターを適用
+    filtered = this.applyCustomFilters(filtered);
+
     this.sortedBonuses = filtered;
     // フィルター適用フラグを設定
     this.isFilterApplied = true;
@@ -1415,6 +1441,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
     this.sortedEmployees = [];
     this.sortedBonuses = [];
+    // 表示列カスタマイズをリセット
+    this.availableColumns = [];
+    this.activeCustomFilters = {};
+    this.customFilters = {};
     // フィルターをリセット
     this.filterDepartment = '';
     this.filterNursingInsurance = '';
@@ -2679,6 +2709,259 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // 日付フィールドかどうかをチェック
   isDateField(key: string): boolean {
     return key === '入社日';
+  }
+
+  // 利用可能なすべての列を初期化
+  initializeAvailableColumns(): void {
+    if (this.availableColumns.length > 0) {
+      return; // 既に初期化済み
+    }
+
+    const columns: Array<{ key: string; label: string; type: string; sortable: boolean; visible: boolean; filterable: boolean }> = [];
+    const columnMap = new Map<string, { key: string; label: string; type: string; sortable: boolean; visible: boolean; filterable: boolean }>();
+    
+    // デフォルト列のキーを取得（デフォルトで表示する列）
+    const defaultColumns = this.tableType === 'salary' ? this.salaryColumns : this.bonusColumns;
+    const defaultColumnKeys = new Set(defaultColumns.map(col => col.key));
+
+    // サンプルデータからすべてのフィールドを取得
+    const sampleData = this.tableType === 'salary' 
+      ? (this.employees && this.employees.length > 0 ? this.employees[0] : null)
+      : (this.bonuses && this.bonuses.length > 0 ? this.bonuses[0] : null);
+
+    // デフォルト列のキーとJSONファイルのフィールド名のマッピング
+    const defaultKeyToJsonKeyMap: { [key: string]: string[] } = {
+      'id': ['ID', 'id'],
+      'name': ['氏名', 'name'],
+      'salary': ['給与', 'salary'],
+      'bonus': ['賞与', 'bonus']
+    };
+    
+    // デフォルト列に対応するJSONファイルのフィールド名を取得
+    const defaultJsonKeys = new Set<string>();
+    defaultColumns.forEach(defaultCol => {
+      if (defaultKeyToJsonKeyMap[defaultCol.key]) {
+        defaultKeyToJsonKeyMap[defaultCol.key].forEach(jsonKey => {
+          defaultJsonKeys.add(jsonKey);
+        });
+      }
+      // デフォルト列のキー自体も追加（計算済みフィールドの場合）
+      defaultJsonKeys.add(defaultCol.key);
+    });
+
+    // 1. デフォルト列を最初に追加（順番を保持）
+    defaultColumns.forEach(defaultCol => {
+      columnMap.set(defaultCol.key, {
+        key: defaultCol.key,
+        label: defaultCol.label,
+        type: defaultCol.type,
+        sortable: defaultCol.sortable,
+        visible: true, // デフォルト列は常に表示
+        filterable: false
+      });
+    });
+
+    if (sampleData) {
+      // 2. JSONファイルの元データフィールドを追加（JSONファイルの順番を保持）
+      const jsonFields = this.getEmployeeAllFields(sampleData);
+      jsonFields.forEach(field => {
+        // デフォルト列に対応するJSONファイルのフィールド名と一致する場合はスキップ（重複を避けるため）
+        if (defaultJsonKeys.has(field.key)) {
+          return;
+        }
+        
+        const fieldType = this.isNumericField(field.key, field.value) ? 'number' : 
+                        this.isDateField(field.key) ? 'date' : 'string';
+        
+        // 既に追加されていない場合のみ追加
+        if (!columnMap.has(field.key)) {
+          columnMap.set(field.key, {
+            key: field.key,
+            label: this.getFieldDisplayName(field.key),
+            type: fieldType,
+            sortable: false,
+            visible: false,
+            filterable: false
+          });
+        }
+      });
+
+      // 3. 計算済みフィールドを追加（デフォルト列に含まれるものは既に追加済み）
+      const calculatedFields = [
+        { key: 'standardSalary', label: '標準報酬月額', type: 'number', condition: this.tableType === 'salary' },
+        { key: 'standardSalaryCalculationBase', label: '標準報酬月額算出基準給与', type: 'number', condition: this.tableType === 'salary' },
+        { key: 'standardBonus', label: '標準賞与額', type: 'number', condition: this.tableType === 'bonus' },
+        { key: 'healthInsurance', label: '健康保険料', type: 'number', condition: true },
+        { key: 'welfarePension', label: '厚生年金保険料', type: 'number', condition: true },
+        { key: 'nursingInsurance', label: '介護保険料', type: 'number', condition: true },
+        { key: 'personalBurden', label: this.tableType === 'salary' ? '社員負担額' : '本人負担額', type: 'number', condition: true },
+        { key: 'grade', label: '健康介護保険等級', type: 'number', condition: this.tableType === 'salary' },
+        { key: 'welfarePensionGrade', label: '厚生年金保険等級', type: 'number', condition: this.tableType === 'salary' }
+      ];
+
+      calculatedFields.forEach(field => {
+        if (field.condition) {
+          // 既に追加されていない場合のみ追加
+          if (!columnMap.has(field.key)) {
+            const isDefaultColumn = defaultColumnKeys.has(field.key);
+            columnMap.set(field.key, {
+              key: field.key,
+              label: field.label,
+              type: field.type,
+              sortable: false,
+              visible: isDefaultColumn, // デフォルト列の場合はvisible: true
+              filterable: false
+            });
+          }
+        }
+      });
+    }
+
+    // 列の順番を決定：デフォルト列 → JSONファイルのフィールド → 計算済みフィールド
+    // 1. デフォルト列を順番通りに追加
+    defaultColumns.forEach(defaultCol => {
+      const col = columnMap.get(defaultCol.key);
+      if (col) {
+        columns.push(col);
+      }
+    });
+
+    // 2. JSONファイルのフィールドを順番通りに追加
+    if (sampleData) {
+      const jsonFields = this.getEmployeeAllFields(sampleData);
+      jsonFields.forEach(field => {
+        if (!defaultJsonKeys.has(field.key)) {
+          const col = columnMap.get(field.key);
+          if (col) {
+            columns.push(col);
+          }
+        }
+      });
+    }
+
+    // 3. 計算済みフィールドを追加（デフォルト列に含まれていないもの）
+    if (sampleData) {
+      const calculatedFields = [
+        { key: 'standardSalaryCalculationBase', label: '標準報酬月額算出基準給与', type: 'number', condition: this.tableType === 'salary' },
+        { key: 'grade', label: '健康介護保険等級', type: 'number', condition: this.tableType === 'salary' },
+        { key: 'welfarePensionGrade', label: '厚生年金保険等級', type: 'number', condition: this.tableType === 'salary' }
+      ];
+
+      calculatedFields.forEach(field => {
+        if (field.condition && !defaultColumnKeys.has(field.key)) {
+          const col = columnMap.get(field.key);
+          if (col) {
+            columns.push(col);
+          }
+        }
+      });
+    }
+
+    this.availableColumns = columns;
+  }
+
+  // 表示列モーダルを開く
+  openColumnCustomizationModal(): void {
+    this.initializeAvailableColumns();
+    this.isColumnCustomizationModalOpen = true;
+  }
+
+  // 表示列モーダルを閉じる
+  closeColumnCustomizationModal(): void {
+    this.isColumnCustomizationModalOpen = false;
+    // テーブルを更新
+    this.applyFilters();
+  }
+
+  // フィルターカスタマイズモーダルを開く
+  openFilterCustomizationModal(): void {
+    this.initializeAvailableColumns();
+    // 表示されている列のみをフィルター可能にする
+    this.availableColumns.forEach(col => {
+      if (col.visible) {
+        // フィルター可能な列の値を取得
+        this.updateFilterValues(col.key);
+      }
+    });
+    this.isFilterCustomizationModalOpen = true;
+  }
+
+  // フィルターカスタマイズモーダルを閉じる
+  closeFilterCustomizationModal(): void {
+    this.isFilterCustomizationModalOpen = false;
+    // フィルターを適用
+    this.applyFilters();
+  }
+
+  // フィルター可能な列の値を更新
+  updateFilterValues(columnKey: string): void {
+    const data = this.tableType === 'salary' ? this.employees : this.bonuses;
+    if (!data || data.length === 0) {
+      this.customFilters[columnKey] = [];
+      return;
+    }
+
+    const values = new Set<any>();
+    data.forEach(item => {
+      const value = this.getColumnValue(item, columnKey);
+      if (value !== null && value !== undefined && value !== '') {
+        values.add(value);
+      }
+    });
+
+    this.customFilters[columnKey] = Array.from(values).sort();
+  }
+
+  // 列の値を取得
+  getColumnValue(employee: Employee | Bonus, columnKey: string): any {
+    // 基本列の値
+    switch (columnKey) {
+      case 'id':
+        return this.getEmployeeId(employee);
+      case 'name':
+        return this.getEmployeeName(employee);
+      case 'salary':
+        return this.getSalary(employee);
+      case 'bonus':
+        return this.getEmployeeField(employee, '賞与') || this.getEmployeeField(employee, 'bonus') || 0;
+      case 'standardSalary':
+        return this.getStandardSalary(employee);
+      case 'standardBonus':
+        return this.getStandardBonus(employee);
+      case 'healthInsurance':
+        return this.getHealthInsurance(employee, this.tableType === 'bonus');
+      case 'welfarePension':
+        return this.getWelfarePension(employee, this.tableType === 'bonus');
+      case 'nursingInsurance':
+        return this.getNursingInsurance(employee, this.tableType === 'bonus');
+      case 'personalBurden':
+        return this.getPersonalBurden(employee, this.tableType === 'bonus');
+      case 'grade':
+        return this.getGrade(employee);
+      case 'welfarePensionGrade':
+        return this.getWelfarePensionGrade(employee);
+      default:
+        // JSONファイルのフィールド
+        const value = this.getEmployeeField(employee, columnKey);
+        return value === '-' ? '' : value;
+    }
+  }
+
+  // カスタムフィルターを適用
+  applyCustomFilters(data: (Employee | Bonus)[]): (Employee | Bonus)[] {
+    let filtered = [...data];
+
+    // アクティブなカスタムフィルターを適用
+    for (const [columnKey, filterValue] of Object.entries(this.activeCustomFilters)) {
+      if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
+        filtered = filtered.filter(item => {
+          const value = this.getColumnValue(item, columnKey);
+          return value === filterValue || String(value) === String(filterValue);
+        });
+      }
+    }
+
+    return filtered;
   }
 
   getEmployeeField(employee: Employee | Bonus, field: string): any {
