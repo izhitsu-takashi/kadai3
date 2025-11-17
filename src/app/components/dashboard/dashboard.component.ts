@@ -119,6 +119,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   
   // 組合保険設定用
   gradeSettingType: 'kyokai' | 'custom' = 'kyokai'; // 等級設定タイプ（デフォルト：協会けんぽに従う）
+  hasSpecificInsured: boolean = false; // 特定被保険者の実装（有/無、デフォルト無）
   customMaxGrade: number = 50; // カスタム最大等級（44~56）
   customMaxGradeStandardSalary: number = 0; // 選択した等級の標準報酬月額
   annualBonusLimitType: 'kyokai' | 'custom' = 'kyokai'; // 年間標準賞与額の上限タイプ（デフォルト：協会けんぽに従う）
@@ -3063,6 +3064,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.insuranceRateDisplay = '';
       this.employeeBurdenRatio = 50;
       this.employeeBurdenRatioDisplay = '50';
+      this.hasSpecificInsured = false;
     } else {
       this.prefecture = '';
     }
@@ -3175,6 +3177,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         // 組合保険設定を読み込み
         this.gradeSettingType = data['gradeSettingType'] || 'kyokai';
         this.customMaxGrade = data['customMaxGrade'] || 50;
+        this.hasSpecificInsured = data['hasSpecificInsured'] !== undefined ? data['hasSpecificInsured'] : false;
         this.annualBonusLimitType = data['annualBonusLimitType'] || 'kyokai';
         this.customAnnualBonusLimit = data['customAnnualBonusLimit'] || 573;
         
@@ -3460,6 +3463,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.healthInsuranceType === 'kumiai') {
         saveData.gradeSettingType = this.gradeSettingType;
         saveData.customMaxGrade = this.customMaxGrade;
+        saveData.hasSpecificInsured = this.hasSpecificInsured;
         saveData.annualBonusLimitType = this.annualBonusLimitType;
         saveData.customAnnualBonusLimit = this.customAnnualBonusLimit;
       }
@@ -4673,6 +4677,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.healthInsuranceType === 'kumiai') {
         saveData.gradeSettingType = this.gradeSettingType;
         saveData.customMaxGrade = this.customMaxGrade;
+        saveData.hasSpecificInsured = this.hasSpecificInsured;
         saveData.annualBonusLimitType = this.annualBonusLimitType;
         saveData.customAnnualBonusLimit = this.customAnnualBonusLimit;
       }

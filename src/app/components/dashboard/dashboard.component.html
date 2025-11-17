@@ -455,6 +455,31 @@
               </div>
             </div>
 
+            <!-- 組合保険の場合の特定被保険者の実装 -->
+            <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
+              <label class="form-label">特定被保険者の実装</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="hasSpecificInsured" 
+                    [value]="true"
+                    [(ngModel)]="hasSpecificInsured"
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
+                  <span>有</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="hasSpecificInsured" 
+                    [value]="false"
+                    [(ngModel)]="hasSpecificInsured"
+                    [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving">
+                  <span>無</span>
+                </label>
+              </div>
+            </div>
+
             <!-- 組合保険の場合の年間標準賞与額の上限変更 -->
             <div *ngIf="healthInsuranceType === 'kumiai'" class="form-group">
               <label class="form-label">健康保険課税対象の年間標準賞与額上限変更</label>
@@ -784,7 +809,7 @@
           <span class="info-label">介護保険者種別</span>
           <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別') }}</span>
         </div>
-        <div class="info-row" *ngIf="tableType === 'bonus' && healthInsuranceType === 'kumiai'">
+        <div class="info-row" *ngIf="tableType === 'bonus' && healthInsuranceType === 'kumiai' && hasSpecificInsured">
           <span class="info-label">介護保険者種別（組合）</span>
           <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別（組合）') }}</span>
         </div>
@@ -820,7 +845,7 @@
           <span class="info-label">介護保険者種別</span>
           <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別') }}</span>
         </div>
-        <div class="info-row" *ngIf="tableType === 'salary' && healthInsuranceType === 'kumiai'">
+        <div class="info-row" *ngIf="tableType === 'salary' && healthInsuranceType === 'kumiai' && hasSpecificInsured">
           <span class="info-label">介護保険者種別（組合）</span>
           <span class="info-value">{{ getEmployeeField(selectedEmployee, '介護保険者種別（組合）') }}</span>
         </div>
