@@ -1101,6 +1101,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.employeeService.getEmployees(this.selectedMonth).subscribe({
       next: (data) => {
         this.employees = data;
+        // データ読み込み完了後に表示列設定を読み込む
+        if (this.tableType === 'salary' && this.availableColumns.length === 0) {
+          this.initializeAvailableColumns(true);
+        }
         this.updateFilterOptions(data);
         this.applyFilters();
         // テーブルの描画が完了するまで待機
@@ -1148,6 +1152,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.employeeService.getBonuses(this.selectedMonth).subscribe({
       next: (data) => {
         this.bonuses = data;
+        // データ読み込み完了後に表示列設定を読み込む
+        if (this.tableType === 'bonus' && this.availableColumns.length === 0) {
+          this.initializeAvailableColumns(true);
+        }
         this.updateFilterOptions(data);
         this.applyBonusFilters();
         // テーブルの描画が完了するまで待機
@@ -1443,13 +1451,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onTableTypeChange(type: 'salary' | 'bonus'): void {
+    // テーブルタイプが変わっていない場合は何もしない
+    if (this.tableType === type) {
+      return;
+    }
+    
     this.tableType = type;
     // フィルター適用フラグをリセット（新しいデータが読み込まれるまで非表示にするため）
     this.isFilterApplied = false;
     // ソート済みデータをリセット（フィルター適用前のデータが表示されないようにするため）
     this.sortedEmployees = [];
     this.sortedBonuses = [];
-    // 表示列カスタマイズをリセット
+    // 表示列カスタマイズをリセット（テーブルタイプが変わったため、新しいタイプ用の設定を読み込む）
     this.availableColumns = [];
     this.activeCustomFilters = {};
     this.customFilters = {};
@@ -2746,8 +2759,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // 利用可能なすべての列を初期化
-  initializeAvailableColumns(): void {
-    if (this.availableColumns.length > 0) {
+  initializeAvailableColumns(force: boolean = false): void {
+    if (this.availableColumns.length > 0 && !force) {
       return; // 既に初期化済み
     }
 
@@ -2892,16 +2905,89 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.availableColumns = columns;
+    // 初期化後、保存された選択状態を復元
+    this.loadColumnVisibilityFromStorage().catch(error => {
+      console.error('Error loading column visibility:', error);
+    });
+  }
+
+  // 表示列の選択状態をFirestoreに保存
+  private async saveColumnVisibilityToStorage(): Promise<void> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) {
+      console.error('Firestoreが初期化されていません。');
+      return;
+    }
+
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'columnVisibilitySettings', this.tableType);
+      const visibilityState = this.availableColumns.map(col => ({
+        key: col.key,
+        visible: col.visible
+      }));
+      await setDoc(docRef, { columns: visibilityState }, { merge: true });
+    } catch (error) {
+      console.error('Error saving column visibility to Firestore:', error);
+    }
+  }
+
+  // 表示列の選択状態をFirestoreから復元
+  private async loadColumnVisibilityFromStorage(): Promise<void> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) {
+      return;
+    }
+
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'columnVisibilitySettings', this.tableType);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const visibilityState = data['columns'] || [];
+        const visibilityMap = new Map(visibilityState.map((item: any) => [item.key, item.visible]));
+        this.availableColumns.forEach(col => {
+          if (visibilityMap.has(col.key)) {
+            const savedVisible = visibilityMap.get(col.key);
+            col.visible = savedVisible === true;
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading column visibility from Firestore:', error);
+    }
+  }
+
+  // デフォルトの表示列に戻す
+  resetToDefaultColumns(): void {
+    const defaultColumns = this.tableType === 'salary' ? this.salaryColumns : this.bonusColumns;
+    const defaultColumnKeys = new Set(defaultColumns.map(col => col.key));
+    
+    this.availableColumns.forEach(col => {
+      col.visible = defaultColumnKeys.has(col.key);
+    });
   }
 
   // 表示列モーダルを開く
   openColumnCustomizationModal(): void {
-    this.initializeAvailableColumns();
+    this.initializeAvailableColumns(true);
     this.isColumnCustomizationModalOpen = true;
   }
 
-  // 表示列モーダルを閉じる
+  // 表示列モーダルを閉じる（保存しない）
   closeColumnCustomizationModal(): void {
+    this.isColumnCustomizationModalOpen = false;
+    // 保存された選択状態を再度読み込んで、変更を破棄
+    this.initializeAvailableColumns(true);
+  }
+
+  // 表示列の選択を保存
+  async saveColumnCustomization(): Promise<void> {
+    // 選択状態をFirestoreに保存
+    await this.saveColumnVisibilityToStorage();
+    // モーダルを閉じる
     this.isColumnCustomizationModalOpen = false;
     // テーブルを更新
     this.applyFilters();
@@ -2909,7 +2995,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // フィルターカスタマイズモーダルを開く
   openFilterCustomizationModal(): void {
-    this.initializeAvailableColumns();
+    this.initializeAvailableColumns(true);
     // フィルター不可の列のキー
     const nonFilterableKeys = ['salary', '給与', 'bonus', '賞与', 'standardSalary', '標準報酬月額', 'standardBonus', '標準賞与額', 
                                 'healthInsurance', '健康保険料', 'welfarePension', '厚生年金保険料', 
@@ -5855,6 +5941,40 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.newColumnName = '';
   }
   
+  // 公序良俗に反する単語のリスト
+  private inappropriateWords: string[] = [
+    '殺', '死', '暴力', '暴行', '傷害', '脅迫', '恐喝',
+    '差別', '偏見', '侮辱', '誹謗', '中傷',
+    '性的', 'わいせつ', 'ポルノ', 'アダルト',
+    '麻薬', '覚醒剤', '違法', '犯罪',
+    'テロ', '爆弾', '武器', '銃',
+    '詐欺', '窃盗', '強盗', '放火'
+  ];
+
+  // 列名が公序良俗に反していないかチェック
+  private isValidColumnName(columnName: string): { valid: boolean; message?: string } {
+    // 空文字列チェック
+    if (!columnName || columnName.trim() === '') {
+      return { valid: false, message: '列名を入力してください。' };
+    }
+
+    const trimmedName = columnName.trim();
+    
+    // 不適切な単語を含んでいないかチェック
+    for (const word of this.inappropriateWords) {
+      if (trimmedName.includes(word)) {
+        return { valid: false, message: `列名に不適切な表現が含まれています。` };
+      }
+    }
+    
+    // 既に存在する列かチェック
+    if (this.templateColumns.includes(trimmedName) || this.addedColumns.includes(trimmedName)) {
+      return { valid: false, message: `列「${trimmedName}」は既に存在します。` };
+    }
+    
+    return { valid: true };
+  }
+
   // 列を追加
   addColumn(): void {
     if (!this.newColumnName || this.newColumnName.trim() === '') {
@@ -5863,9 +5983,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     
     const columnName = this.newColumnName.trim();
     
-    // 既に存在する列かチェック
-    if (this.templateColumns.includes(columnName) || this.addedColumns.includes(columnName)) {
-      alert(`列「${columnName}」は既に存在します。`);
+    // 公序良俗チェック
+    const validation = this.isValidColumnName(columnName);
+    if (!validation.valid) {
+      alert(validation.message || '列名が無効です。');
       return;
     }
     

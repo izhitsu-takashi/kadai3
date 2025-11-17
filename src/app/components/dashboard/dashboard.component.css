@@ -286,7 +286,7 @@
 }
 
 .initial-loading-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -296,6 +296,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  overflow: hidden;
 }
 
 .initial-loading-content {
@@ -465,8 +466,10 @@
 .table-container {
   background: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .employer-burden-display {
@@ -477,6 +480,9 @@
   background: #f7fafc;
   border-bottom: 1px solid #e2e8f0;
   font-size: 1.2rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0;
 }
 
 .employer-burden-label {
@@ -495,7 +501,8 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
-  table-layout: fixed;
+  table-layout: auto;
+  min-width: 100%;
 }
 
 .employee-table thead {
@@ -504,17 +511,16 @@
 }
 
 .employee-table th {
-  padding: 0;
+  padding: 0.75rem 0.5rem;
   text-align: center;
   font-weight: 600;
   color: #2d3748;
   white-space: nowrap;
   border-right: 1px solid #e2e8f0;
   position: relative;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 0.85rem;
   vertical-align: middle;
+  min-width: 80px;
 }
 
 .employee-table th:last-child {
@@ -572,10 +578,9 @@
   padding: 0.75rem 0.5rem;
   color: #4a5568;
   border-right: 1px solid #e2e8f0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.85rem;
+  min-width: 80px;
 }
 
 .employee-table td:last-child {

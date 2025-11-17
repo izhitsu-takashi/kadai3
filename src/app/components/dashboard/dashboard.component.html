@@ -125,16 +125,16 @@
             </div>
           </div>
         </div>
+        <!-- 事業者負担額表示（フィルター適用後のみ表示） -->
+        <div *ngIf="!isLoading && isFilterApplied && ((tableType === 'salary' && sortedEmployees && sortedEmployees.length > 0) || (tableType === 'bonus' && sortedBonuses && sortedBonuses.length > 0))" class="employer-burden-display">
+          <div class="employer-burden-label">{{ selectedMonth }}　事業者負担額合計</div>
+          <div class="employer-burden-value">{{ getEmployerBurden() | number }}円</div>
+        </div>
         <div class="table-container">
           <div *ngIf="isLoading" class="loading-message">
             <p>データを読み込み中...</p>
           </div>
           <ng-container *ngIf="!isLoading">
-          <!-- 事業者負担額表示（フィルター適用後のみ表示） -->
-          <div *ngIf="isFilterApplied && ((tableType === 'salary' && sortedEmployees && sortedEmployees.length > 0) || (tableType === 'bonus' && sortedBonuses && sortedBonuses.length > 0))" class="employer-burden-display">
-            <div class="employer-burden-label">{{ selectedMonth }}　事業者負担額合計</div>
-            <div class="employer-burden-value">{{ getEmployerBurden() | number }}円</div>
-          </div>
           <!-- 給与テーブル -->
           <table *ngIf="tableType === 'salary' && employees && employees.length > 0" class="employee-table">
             <thead>
@@ -1191,6 +1191,13 @@
     <div class="modal-header">
       <h2 class="modal-title">表示列の選択</h2>
       <div class="modal-header-actions">
+        <button 
+          type="button"
+          class="modal-button primary"
+          style="margin-right: 0.5rem; padding: 0.5rem 1rem; font-size: 0.9rem;"
+          (click)="resetToDefaultColumns()">
+          デフォルト設定
+        </button>
         <button class="modal-close-button" (click)="closeColumnCustomizationModal()">×</button>
       </div>
     </div>
@@ -1201,15 +1208,15 @@
           <label *ngFor="let column of availableColumns" class="column-checkbox-item">
             <input 
               type="checkbox" 
-              [(ngModel)]="column.visible"
-              (change)="applyFilters()">
+              [(ngModel)]="column.visible">
             <span>{{ column.label }}</span>
           </label>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="modal-button primary" (click)="closeColumnCustomizationModal()">閉じる</button>
+      <button type="button" class="modal-button secondary" (click)="closeColumnCustomizationModal()">キャンセル</button>
+      <button type="button" class="modal-button primary" (click)="saveColumnCustomization()">保存</button>
     </div>
   </div>
 </div>
