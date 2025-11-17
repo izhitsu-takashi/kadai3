@@ -1106,7 +1106,12 @@
         <p class="filter-customization-description">フィルターを適用したい列を選択し、値を選択してください。</p>
         <div class="filter-list">
           <ng-container *ngFor="let column of availableColumns">
-            <div *ngIf="column.visible" class="filter-item">
+            <div *ngIf="column.key !== 'salary' && column.key !== '給与' && column.key !== 'bonus' && column.key !== '賞与' && 
+                        column.key !== 'standardSalary' && column.key !== '標準報酬月額' && column.key !== 'standardBonus' && column.key !== '標準賞与額' && 
+                        column.key !== 'healthInsurance' && column.key !== '健康保険料' && 
+                        column.key !== 'welfarePension' && column.key !== '厚生年金保険料' && 
+                        column.key !== 'nursingInsurance' && column.key !== '介護保険料' && 
+                        column.key !== 'personalBurden' && column.key !== '社員負担額' && column.key !== '本人負担額'" class="filter-item">
               <div class="filter-item-header">
                 <label class="filter-checkbox-label">
                   <input 
@@ -1116,17 +1121,17 @@
                   <span>{{ column.label }}</span>
                 </label>
               </div>
-              <div *ngIf="column.filterable" class="filter-item-content">
-                <select 
-                  class="filter-select"
-                  [(ngModel)]="activeCustomFilters[column.key]"
-                  (change)="applyFilters()">
-                  <option [value]="null">すべて</option>
-                  <option *ngFor="let value of customFilters[column.key]" [value]="value">
-                    {{ value }}
-                  </option>
-                </select>
-              </div>
+            <div *ngIf="column.filterable" class="filter-item-content">
+              <select 
+                class="filter-select"
+                [ngModel]="activeCustomFilters[column.key] || ''"
+                (ngModelChange)="onFilterValueChange(column.key, $event)">
+                <option value="">すべて</option>
+                <option *ngFor="let value of customFilters[column.key]" [value]="value">
+                  {{ value }}
+                </option>
+              </select>
+            </div>
             </div>
           </ng-container>
         </div>

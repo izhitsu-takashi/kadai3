@@ -2876,9 +2876,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // フィルターカスタマイズモーダルを開く
   openFilterCustomizationModal(): void {
     this.initializeAvailableColumns();
-    // 表示されている列のみをフィルター可能にする
+    // フィルター不可の列のキー
+    const nonFilterableKeys = ['salary', '給与', 'bonus', '賞与', 'standardSalary', '標準報酬月額', 'standardBonus', '標準賞与額', 
+                                'healthInsurance', '健康保険料', 'welfarePension', '厚生年金保険料', 
+                                'nursingInsurance', '介護保険料', 'personalBurden', '社員負担額', '本人負担額'];
+    
+    // すべての列をフィルター可能にする（フィルター不可の列を除く）
     this.availableColumns.forEach(col => {
-      if (col.visible) {
+      if (!nonFilterableKeys.includes(col.key)) {
         // フィルター可能な列の値を取得
         this.updateFilterValues(col.key);
       }
@@ -2910,6 +2915,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.customFilters[columnKey] = Array.from(values).sort();
+    
+    // チェックボックスが外された場合、フィルターを削除
+    const column = this.availableColumns.find(col => col.key === columnKey);
+    if (column && !column.filterable) {
+      delete this.activeCustomFilters[columnKey];
+      this.applyFilters();
+    }
   }
 
   // 列の値を取得
@@ -2947,18 +2959,46 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // フィルター値が変更されたときの処理
+  onFilterValueChange(columnKey: string, value: any): void {
+    // 「すべて」が選択された場合（null、undefined、空文字列、または'すべて'という文字列）
+    if (value === null || value === undefined || value === '' || value === 'すべて') {
+      // フィルターを削除
+      if (this.activeCustomFilters.hasOwnProperty(columnKey)) {
+        delete this.activeCustomFilters[columnKey];
+      }
+    } else {
+      // 値が選択された場合、フィルターを設定
+      this.activeCustomFilters[columnKey] = value;
+    }
+    // フィルターを再適用
+    this.applyFilters();
+  }
+
   // カスタムフィルターを適用
   applyCustomFilters(data: (Employee | Bonus)[]): (Employee | Bonus)[] {
     let filtered = [...data];
 
     // アクティブなカスタムフィルターを適用
+    // null、undefined、空文字列のエントリを無視
+    const activeFilters: { [key: string]: any } = {};
     for (const [columnKey, filterValue] of Object.entries(this.activeCustomFilters)) {
       if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
-        filtered = filtered.filter(item => {
-          const value = this.getColumnValue(item, columnKey);
-          return value === filterValue || String(value) === String(filterValue);
-        });
+        activeFilters[columnKey] = filterValue;
       }
+    }
+
+    // フィルターが1つもない場合は、そのまま返す
+    if (Object.keys(activeFilters).length === 0) {
+      return filtered;
+    }
+
+    // アクティブなフィルターを適用
+    for (const [columnKey, filterValue] of Object.entries(activeFilters)) {
+      filtered = filtered.filter(item => {
+        const value = this.getColumnValue(item, columnKey);
+        return value === filterValue || String(value) === String(filterValue);
+      });
     }
 
     return filtered;
