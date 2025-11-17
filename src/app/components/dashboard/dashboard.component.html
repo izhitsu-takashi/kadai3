@@ -6,6 +6,7 @@
         <button 
           class="notification-button" 
           type="button"
+          [disabled]="selectedMenuId === 'health-insurance-settings' && isHealthInsuranceEditing"
           (click)="toggleNotification()">
           お知らせ
           <span *ngIf="getUnreadNotificationCount() > 0" class="notification-badge">{{ getUnreadNotificationCount() }}</span>
@@ -13,7 +14,7 @@
         <button 
           class="logout-button" 
           type="button"
-          [disabled]="isLoggingOut || isHealthInsuranceSaving"
+          [disabled]="isLoggingOut || isHealthInsuranceSaving || (selectedMenuId === 'health-insurance-settings' && isHealthInsuranceEditing)"
           (click)="onLogout()">
           {{ isLoggingOut ? 'ログアウト中' : 'ログアウト' }}
         </button>
@@ -398,11 +399,12 @@
                   id="employeeBurdenRatio" 
                   class="form-input"
                   [class.error]="employeeBurdenRatioError"
-                  [(ngModel)]="employeeBurdenRatioDisplay"
+                  [value]="employeeBurdenRatioDisplay"
+                  (input)="onEmployeeBurdenRatioInput($event)"
+                  (blur)="onEmployeeBurdenRatioBlur()"
                   name="employeeBurdenRatio"
                   [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
-                  placeholder="割合を入力"
-                  (blur)="onEmployeeBurdenRatioBlur()">
+                  placeholder="割合を入力">
                 <span class="percentage-symbol">%</span>
               </div>
               <div *ngIf="employeeBurdenRatioError" class="error-message">
@@ -514,8 +516,9 @@
                     type="text" 
                     id="customAnnualBonusLimit" 
                     class="form-input"
-                    [(ngModel)]="customAnnualBonusLimit"
-                    (ngModelChange)="onCustomAnnualBonusLimitChange()"
+                    [value]="customAnnualBonusLimit"
+                    (input)="onCustomAnnualBonusLimitInput($event)"
+                    (blur)="onCustomAnnualBonusLimitBlur()"
                     name="customAnnualBonusLimit"
                     [disabled]="!isHealthInsuranceEditing || isHealthInsuranceSaving"
                     placeholder="573">

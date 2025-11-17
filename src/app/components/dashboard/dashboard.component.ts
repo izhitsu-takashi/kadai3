@@ -483,9 +483,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * 年間標準賞与額上限タイプが変更されたときの処理
    */
   onAnnualBonusLimitTypeChange(): void {
-    // 設定を自動保存
-    this.autoSaveHealthInsurance();
-    
     // 保険料一覧テーブルを再計算（賞与テーブルの場合）
     if (this.tableType === 'bonus') {
       this.loadBonuses();
@@ -493,11 +490,52 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   
   /**
-   * カスタム年間標準賞与額上限が変更されたときの処理
+   * カスタム年間標準賞与額上限の入力処理
    */
-  onCustomAnnualBonusLimitChange(): void {
-    // 設定を自動保存
-    this.autoSaveHealthInsurance();
+  onCustomAnnualBonusLimitInput(event: any): void {
+    // 入力値を取得
+    let value = event.target.value;
+    
+    // 空の場合は何もしない（自由に編集できるようにする）
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    
+    // 数字以外の文字が含まれているかチェック
+    if (!/^[0-9]*$/.test(value)) {
+      // 数字以外の文字を削除
+      value = value.replace(/[^0-9]/g, '');
+      event.target.value = value;
+    }
+    
+    // 4桁以上（10000以上）の場合は入力を制限
+    if (value.length > 4) {
+      // 4桁までに制限
+      value = value.substring(0, 4);
+      event.target.value = value;
+    }
+    
+    // 数値に変換
+    const numValue = parseInt(value, 10);
+    
+    // 有効な数値の場合のみ更新（9999以下）
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 9999) {
+      this.customAnnualBonusLimit = numValue;
+    } else if (!isNaN(numValue) && numValue > 9999) {
+      // 9999を超える場合は9999に制限
+      this.customAnnualBonusLimit = 9999;
+      event.target.value = '9999';
+    }
+  }
+
+  /**
+   * カスタム年間標準賞与額上限のフォーカスが外れたときの処理
+   */
+  onCustomAnnualBonusLimitBlur(): void {
+    // フォーカスが外れた時に値を正規化（無効な値の場合のみデフォルト値に設定）
+    if (this.customAnnualBonusLimit === null || this.customAnnualBonusLimit === undefined || isNaN(this.customAnnualBonusLimit) || this.customAnnualBonusLimit < 0) {
+      this.customAnnualBonusLimit = 573;
+    }
     
     // 保険料一覧テーブルを再計算（賞与テーブルの場合）
     if (this.tableType === 'bonus') {
@@ -1372,6 +1410,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async selectMenu(menuId: string): Promise<void> {
+    // 健康保険設定ページが編集モードの場合は移動をブロック
+    if (this.selectedMenuId === 'health-insurance-settings' && this.isHealthInsuranceEditing) {
+      alert('設定を保存してください');
+      return;
+    }
+    
     // 設定ページから移動する際に自動保存
     if (this.selectedMenuId === 'company-settings') {
       await this.autoSaveCompanyInfo();
@@ -1413,6 +1457,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async selectSettingsSubMenu(subMenuId: string): Promise<void> {
+    // 健康保険設定ページが編集モードの場合は移動をブロック
+    if (this.selectedMenuId === 'health-insurance-settings' && this.isHealthInsuranceEditing) {
+      alert('設定を保存してください');
+      return;
+    }
+    
     // 設定ページから移動する際に自動保存
     if (this.selectedMenuId === 'company-settings') {
       await this.autoSaveCompanyInfo();
@@ -3630,6 +3680,77 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isHealthInsuranceSaved = false;
   }
 
+  onEmployeeBurdenRatioInput(event: any): void {
+    // エラーメッセージをクリア
+    this.employeeBurdenRatioError = '';
+    
+    // 入力値を取得
+    let value = event.target.value;
+    
+    // 空の場合は何もしない（自由に編集できるようにする）
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    
+    // 数字と小数点以外の文字が含まれているかチェック
+    if (!/^[0-9.]*$/.test(value)) {
+      // 数字と小数点以外の文字を削除
+      value = value.replace(/[^0-9.]/g, '');
+      event.target.value = value;
+    }
+    
+    // 複数の小数点を1つに統一
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+      event.target.value = value;
+    }
+    
+    // 小数点以下の桁数を2桁までに制限
+    if (value.includes('.')) {
+      const decimalPart = value.split('.')[1] || '';
+      if (decimalPart.length > 2) {
+        // 小数第2位までに制限
+        value = value.split('.')[0] + '.' + decimalPart.substring(0, 2);
+        event.target.value = value;
+      }
+    }
+    
+    // 4桁以上（1000以上）の場合は入力を制限（小数点を含む場合は小数点を除いた整数部分でチェック）
+    const integerPart = value.split('.')[0];
+    if (integerPart.length > 3) {
+      // 3桁までに制限（小数点を含む場合は小数点を含めた全体で4桁まで）
+      if (value.includes('.')) {
+        // 小数点を含む場合、整数部分3桁 + 小数点 + 小数部分（最大2桁）
+        const decimalPart = value.split('.')[1] || '';
+        value = integerPart.substring(0, 3) + '.' + decimalPart.substring(0, 2);
+      } else {
+        // 小数点を含まない場合、3桁まで
+        value = integerPart.substring(0, 3);
+      }
+      event.target.value = value;
+    }
+    
+    // 数値に変換
+    const numValue = parseFloat(value);
+    
+    // 有効な数値の場合のみ更新（0-100の間、かつ999.99以下）
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100 && numValue <= 999.99) {
+      this.employeeBurdenRatio = numValue;
+      this.employeeBurdenRatioDisplay = value;
+    } else if (!isNaN(numValue) && numValue > 100) {
+      // 100を超える場合は100に制限
+      this.employeeBurdenRatio = 100;
+      this.employeeBurdenRatioDisplay = '100';
+      event.target.value = '100';
+    } else if (!isNaN(numValue) && numValue > 999.99) {
+      // 999.99を超える場合は999.99に制限
+      this.employeeBurdenRatio = 999.99;
+      this.employeeBurdenRatioDisplay = '999.99';
+      event.target.value = '999.99';
+    }
+  }
+
   onEmployeeBurdenRatioBlur(): void {
     // エラーメッセージをクリア
     this.employeeBurdenRatioError = '';
@@ -3644,9 +3765,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     
-    // 数字以外の文字が含まれているかチェック（小数点も許可）
+    // 数字と小数点以外の文字が含まれているかチェック
     if (!/^[0-9]*\.?[0-9]*$/.test(value)) {
-      this.employeeBurdenRatioError = '数字のみ入力できます';
+      this.employeeBurdenRatioError = '数字と小数点のみ入力できます';
       // 前の有効な値に戻す
       this.employeeBurdenRatio = (this.employeeBurdenRatio !== undefined && this.employeeBurdenRatio !== null && !isNaN(this.employeeBurdenRatio)) ? this.employeeBurdenRatio : 50;
       this.employeeBurdenRatioDisplay = this.employeeBurdenRatio.toString();
