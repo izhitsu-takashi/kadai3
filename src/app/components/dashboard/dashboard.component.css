@@ -781,13 +781,47 @@
   border-radius: 12px;
 }
 
+.inquiry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
 .inquiry-title {
   font-size: 1.75rem;
   font-weight: 700;
   color: #2d3748;
-  margin: 0 0 2rem 0;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e2e8f0;
+  margin: 0;
+}
+
+.edit-rate-button,
+.cancel-rate-button {
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  background: #667eea;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.edit-rate-button:hover {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.cancel-rate-button {
+  background: #718096;
+}
+
+.cancel-rate-button:hover {
+  background: #5a6c7d;
 }
 
 .rate-cards {
@@ -838,12 +872,64 @@
 }
 
 .rate-value-note {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: #4a5568;
-  margin: 0;
-  text-align: center;
-  line-height: 1.6;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.rate-value-note p {
+  font-size: 0.875rem;
+  color: #718096;
+  margin: 0.25rem 0;
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.rate-value-edit {
+  margin: 1rem 0;
+}
+
+.note-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  color: #2d3748;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.note-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.note-textarea:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+}
+
+.rate-inquiry-actions {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.char-count {
+  font-size: 0.75rem;
+  color: #718096;
+  text-align: right;
+  margin-top: 0.25rem;
 }
 
 .settings-menu {

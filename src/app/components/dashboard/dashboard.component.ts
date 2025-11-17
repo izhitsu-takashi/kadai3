@@ -134,6 +134,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // 保険料率設定（厚生年金、介護保険）
   welfarePensionRate: number = 18.3; // デフォルト値
   nursingInsuranceRate: number = 1.59; // デフォルト値
+  welfarePensionRateNote: string = '※厚生年金保険料、介護保険料は令和7年度の料率です。'; // 厚生年金保険料の注意書き
+  nursingInsuranceRateNote: string = '※厚生年金保険料、介護保険料は令和7年度の料率です。\n※介護保険料は40歳以上の方が対象です。'; // 介護保険料の注意書き
+  
+  // 保険料率照会ページの編集モード
+  isInsuranceRateInquiryEditing: boolean = false;
+  isInsuranceRateInquirySaving: boolean = false;
 
   prefectures = [
     '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
@@ -3176,6 +3182,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         
         this.welfarePensionRate = data['welfarePensionRate'] || 18.3;
         this.nursingInsuranceRate = data['nursingInsuranceRate'] || 1.59;
+        this.welfarePensionRateNote = data['welfarePensionRateNote'] || '※厚生年金保険料、介護保険料は令和7年度の料率です。';
+        this.nursingInsuranceRateNote = data['nursingInsuranceRateNote'] || '※厚生年金保険料、介護保険料は令和7年度の料率です。\n※介護保険料は40歳以上の方が対象です。';
         
         // 保険料率が変更された場合、お知らせを追加（初回読み込み時は通知しない）
         // 前の値がデフォルト値と同じ場合は初回読み込みと判断し、通知を追加しない
@@ -3748,6 +3756,200 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.employeeBurdenRatio = 999.99;
       this.employeeBurdenRatioDisplay = '999.99';
       event.target.value = '999.99';
+    }
+  }
+
+  onEditInsuranceRateInquiry(): void {
+    // パスワード入力を求める
+    const password = prompt('保険料率を変更するにはパスワードを入力してください:');
+    
+    // パスワードが正しい場合のみ編集モードに切り替え
+    if (password === 'password') {
+      this.isInsuranceRateInquiryEditing = true;
+    } else if (password !== null) {
+      // パスワードが入力されたが間違っている場合
+      alert('パスワードが正しくありません。');
+    }
+    // password === null の場合はキャンセルされたので何もしない
+  }
+
+  onWelfarePensionRateInput(event: any): void {
+    let value = event.target.value;
+    
+    // 空の場合は何もしない
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    
+    // 数字と小数点以外の文字を削除
+    if (!/^[0-9.]*$/.test(value)) {
+      value = value.replace(/[^0-9.]/g, '');
+      event.target.value = value;
+    }
+    
+    // 複数の小数点を1つに統一
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+      event.target.value = value;
+    }
+    
+    // 小数点以下の桁数を3桁までに制限
+    if (value.includes('.')) {
+      const decimalPart = value.split('.')[1] || '';
+      if (decimalPart.length > 3) {
+        value = value.split('.')[0] + '.' + decimalPart.substring(0, 3);
+        event.target.value = value;
+      }
+    }
+    
+    // 数値に変換
+    const numValue = parseFloat(value);
+    
+    // 有効な数値の場合のみ更新（0-100の間）
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+      this.welfarePensionRate = numValue;
+    } else if (!isNaN(numValue) && numValue > 100) {
+      // 100を超える場合は100に制限
+      this.welfarePensionRate = 100;
+      event.target.value = '100';
+    }
+  }
+
+  onWelfarePensionRateBlur(): void {
+    // フォーカスが外れた時に値を正規化
+    if (this.welfarePensionRate === null || this.welfarePensionRate === undefined || isNaN(this.welfarePensionRate) || this.welfarePensionRate < 0) {
+      this.welfarePensionRate = 18.3;
+    } else if (this.welfarePensionRate > 100) {
+      this.welfarePensionRate = 100;
+    }
+  }
+
+  onNursingInsuranceRateInput(event: any): void {
+    let value = event.target.value;
+    
+    // 空の場合は何もしない
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    
+    // 数字と小数点以外の文字を削除
+    if (!/^[0-9.]*$/.test(value)) {
+      value = value.replace(/[^0-9.]/g, '');
+      event.target.value = value;
+    }
+    
+    // 複数の小数点を1つに統一
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+      event.target.value = value;
+    }
+    
+    // 小数点以下の桁数を3桁までに制限
+    if (value.includes('.')) {
+      const decimalPart = value.split('.')[1] || '';
+      if (decimalPart.length > 3) {
+        value = value.split('.')[0] + '.' + decimalPart.substring(0, 3);
+        event.target.value = value;
+      }
+    }
+    
+    // 数値に変換
+    const numValue = parseFloat(value);
+    
+    // 有効な数値の場合のみ更新（0-100の間）
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+      this.nursingInsuranceRate = numValue;
+    } else if (!isNaN(numValue) && numValue > 100) {
+      // 100を超える場合は100に制限
+      this.nursingInsuranceRate = 100;
+      event.target.value = '100';
+    }
+  }
+
+  onNursingInsuranceRateBlur(): void {
+    // フォーカスが外れた時に値を正規化
+    if (this.nursingInsuranceRate === null || this.nursingInsuranceRate === undefined || isNaN(this.nursingInsuranceRate) || this.nursingInsuranceRate < 0) {
+      this.nursingInsuranceRate = 1.59;
+    } else if (this.nursingInsuranceRate > 100) {
+      this.nursingInsuranceRate = 100;
+    }
+  }
+
+  onWelfarePensionRateNoteInput(event: any): void {
+    let value = event.target.value;
+    
+    // 200文字を超える場合は制限
+    if (value.length > 200) {
+      value = value.substring(0, 200);
+      event.target.value = value;
+    }
+    
+    this.welfarePensionRateNote = value;
+  }
+
+  onNursingInsuranceRateNoteInput(event: any): void {
+    let value = event.target.value;
+    
+    // 200文字を超える場合は制限
+    if (value.length > 200) {
+      value = value.substring(0, 200);
+      event.target.value = value;
+    }
+    
+    this.nursingInsuranceRateNote = value;
+  }
+
+  async onCancelInsuranceRateInquiry(): Promise<void> {
+    // 編集モードをキャンセル（元の値に戻す）
+    await this.loadInsuranceRateSettings();
+    this.isInsuranceRateInquiryEditing = false;
+  }
+
+  async onSaveInsuranceRateInquiry(): Promise<void> {
+    // 確認ダイアログを表示
+    const confirmed = confirm('保険料率を保存します。本当によろしいですか？');
+    
+    // ユーザーがキャンセルした場合は処理を中断
+    if (!confirmed) {
+      return;
+    }
+    
+    // 保存中フラグを設定
+    this.isInsuranceRateInquirySaving = true;
+    
+    try {
+      const db = this.firestoreService.getFirestore();
+      if (!db) {
+        alert('Firestoreが初期化されていません');
+        return;
+      }
+      
+      // Firestoreに保存
+      const docRef = doc(db, 'insuranceRateSettings', 'settings');
+      await setDoc(docRef, {
+        welfarePensionRate: this.welfarePensionRate,
+        nursingInsuranceRate: this.nursingInsuranceRate,
+        welfarePensionRateNote: this.welfarePensionRateNote,
+        nursingInsuranceRateNote: this.nursingInsuranceRateNote,
+        updatedAt: new Date()
+      }, { merge: true });
+      
+      // 保存完了の状態に変更
+      this.isInsuranceRateInquiryEditing = false;
+      
+      // 保険料一覧テーブルを再計算
+      if (this.tableType === 'salary' && this.allEmployeesData.length > 0) {
+        this.loadEmployees();
+      } else if (this.tableType === 'bonus' && this.allBonusesData.length > 0) {
+        this.loadBonuses();
+      }
+    } catch (error: any) {
+      console.error('Error saving insurance rate settings:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isInsuranceRateInquirySaving = false;
     }
   }
 

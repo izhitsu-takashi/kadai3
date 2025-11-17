@@ -549,17 +549,65 @@
       </div>
       <div *ngIf="selectedMenuId === 'insurance-rate-inquiry'" class="settings-page-container">
         <div class="insurance-rate-inquiry-container">
-          <h2 class="inquiry-title">保険料率照会</h2>
+          <div class="inquiry-header">
+            <h2 class="inquiry-title">保険料率照会</h2>
+            <button 
+              *ngIf="!isInsuranceRateInquiryEditing" 
+              type="button"
+              class="edit-rate-button"
+              (click)="onEditInsuranceRateInquiry()">
+              保険料率変更
+            </button>
+            <button 
+              *ngIf="isInsuranceRateInquiryEditing" 
+              type="button"
+              class="cancel-rate-button"
+              (click)="onCancelInsuranceRateInquiry()">
+              キャンセル
+            </button>
+          </div>
           <div class="rate-cards">
             <div class="rate-card">
               <div class="rate-card-header">
                 <h3 class="rate-card-title">厚生年金保険料</h3>
               </div>
               <div class="rate-card-content">
-                <p class="rate-value">18.3%</p>
+                <div *ngIf="!isInsuranceRateInquiryEditing" class="rate-value-display">
+                  <p class="rate-value">{{ welfarePensionRate }}%</p>
+                </div>
+                <div *ngIf="isInsuranceRateInquiryEditing" class="rate-value-edit">
+                  <div class="insurance-rate-input-wrapper">
+                    <input 
+                      type="text" 
+                      id="welfarePensionRate" 
+                      class="form-input"
+                      [value]="welfarePensionRate"
+                      (input)="onWelfarePensionRateInput($event)"
+                      (blur)="onWelfarePensionRateBlur()"
+                      name="welfarePensionRate"
+                      [disabled]="isInsuranceRateInquirySaving"
+                      placeholder="料率を入力">
+                    <span class="percentage-symbol">%</span>
+                  </div>
+                </div>
               </div>
               <div class="rate-value-note">
-                <p>※厚生年金保険料、介護保険料は令和7年度の料率です。</p>
+                <div *ngIf="!isInsuranceRateInquiryEditing">
+                  <p *ngFor="let line of welfarePensionRateNote.split('\n')">{{ line }}</p>
+                </div>
+                <div *ngIf="isInsuranceRateInquiryEditing">
+                  <textarea 
+                    id="welfarePensionRateNote"
+                    class="note-textarea"
+                    [value]="welfarePensionRateNote"
+                    (input)="onWelfarePensionRateNoteInput($event)"
+                    name="welfarePensionRateNote"
+                    [disabled]="isInsuranceRateInquirySaving"
+                    rows="3"
+                    maxlength="200"
+                    placeholder="注意書きを入力"></textarea>
+                  <div class="char-count">{{ welfarePensionRateNote.length }}/200</div>
+                </div>
               </div>
             </div>
             <div class="rate-card">
@@ -567,11 +615,42 @@
                 <h3 class="rate-card-title">介護保険料</h3>
               </div>
               <div class="rate-card-content">
-                <p class="rate-value">1.59%</p>
+                <div *ngIf="!isInsuranceRateInquiryEditing" class="rate-value-display">
+                  <p class="rate-value">{{ nursingInsuranceRate }}%</p>
+                </div>
+                <div *ngIf="isInsuranceRateInquiryEditing" class="rate-value-edit">
+                  <div class="insurance-rate-input-wrapper">
+                    <input 
+                      type="text" 
+                      id="nursingInsuranceRate" 
+                      class="form-input"
+                      [value]="nursingInsuranceRate"
+                      (input)="onNursingInsuranceRateInput($event)"
+                      (blur)="onNursingInsuranceRateBlur()"
+                      name="nursingInsuranceRate"
+                      [disabled]="isInsuranceRateInquirySaving"
+                      placeholder="料率を入力">
+                    <span class="percentage-symbol">%</span>
+                  </div>
+                </div>
               </div>
               <div class="rate-value-note">
-                <p>※厚生年金保険料、介護保険料は令和7年度の料率です。</p>
-                <p>※介護保険料は40歳以上の方が対象です。</p>
+                <div *ngIf="!isInsuranceRateInquiryEditing">
+                  <p *ngFor="let line of nursingInsuranceRateNote.split('\n')">{{ line }}</p>
+                </div>
+                <div *ngIf="isInsuranceRateInquiryEditing">
+                  <textarea 
+                    id="nursingInsuranceRateNote"
+                    class="note-textarea"
+                    [value]="nursingInsuranceRateNote"
+                    (input)="onNursingInsuranceRateNoteInput($event)"
+                    name="nursingInsuranceRateNote"
+                    [disabled]="isInsuranceRateInquirySaving"
+                    rows="3"
+                    maxlength="200"
+                    placeholder="注意書きを入力"></textarea>
+                  <div class="char-count">{{ nursingInsuranceRateNote.length }}/200</div>
+                </div>
               </div>
             </div>
             <div class="rate-card">
@@ -589,6 +668,15 @@
                 <p>※健康保険料は協会けんぽの場合、都道府県によって料率が異なります。</p>
               </div>
             </div>
+          </div>
+          <div *ngIf="isInsuranceRateInquiryEditing" class="rate-inquiry-actions">
+            <button 
+              type="button"
+              class="submit-button"
+              [disabled]="isInsuranceRateInquirySaving"
+              (click)="onSaveInsuranceRateInquiry()">
+              {{ isInsuranceRateInquirySaving ? '保存中...' : '保存' }}
+            </button>
           </div>
         </div>
       </div>
