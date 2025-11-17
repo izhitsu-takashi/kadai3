@@ -36,6 +36,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     { label: '企業情報設定', id: 'company-settings' },
     { label: '健康保険設定', id: 'health-insurance-settings' },
     { label: '社員情報設定', id: 'employee-settings' },
+    { label: '保険料免除設定', id: 'insurance-exemption-settings' },
     { label: '保険料率照会', id: 'insurance-rate-inquiry' },
     { label: '保険者情報照会', id: 'insurer-inquiry' },
     { label: 'チュートリアル', id: 'tutorial' }

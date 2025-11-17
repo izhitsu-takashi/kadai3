@@ -683,6 +683,9 @@
       <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">
         <app-import></app-import>
       </div>
+      <div *ngIf="selectedMenuId === 'insurance-exemption-settings'" class="settings-page-container">
+        <app-import [showOnlyExemption]="true"></app-import>
+      </div>
       <div *ngIf="selectedMenuId === 'insurer-inquiry'" class="settings-page-container">
         <div class="insurer-inquiry-container">
           <h2 class="form-title">保険者情報照会</h2>
@@ -866,7 +869,7 @@
         </div>
       </div>
       
-      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'insurer-inquiry' && selectedMenuId !== 'reports'" class="page-message">
+      <div *ngIf="selectedMenuId !== 'insurance-list' && selectedMenuId !== 'company-settings' && selectedMenuId !== 'health-insurance-settings' && selectedMenuId !== 'employee-settings' && selectedMenuId !== 'insurance-exemption-settings' && selectedMenuId !== 'insurance-rate-inquiry' && selectedMenuId !== 'insurer-inquiry' && selectedMenuId !== 'reports'" class="page-message">
         <p>{{ getSelectedMenuLabel() }}のページです。</p>
       </div>
     </main>

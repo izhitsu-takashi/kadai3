@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -23,8 +23,8 @@ export interface InsuranceExemption {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="import-container">
-      <h2>社員情報設定</h2>
-      <div class="import-section">
+      <h2>{{ showOnlyExemption ? '保険料免除設定' : '社員情報設定' }}</h2>
+      <div *ngIf="!showOnlyExemption" class="import-section">
         <h3>社員データインポート</h3>
         <p class="description">給与データと賞与データをFirebaseにインポートします。</p>
         <button (click)="importData()" [disabled]="isImporting" class="import-button">
@@ -35,8 +35,7 @@ export interface InsuranceExemption {
         </div>
       </div>
       
-      <div class="import-section">
-        <h3>保険料免除設定</h3>
+      <div *ngIf="showOnlyExemption" class="import-section">
         <p class="description">社員の保険料免除期間を設定します。設定した期間中は、該当社員の社会保険料が0円になります。</p>
         
         <form (ngSubmit)="addExemption()" class="exemption-form">
@@ -117,7 +116,7 @@ export interface InsuranceExemption {
           <p>{{ exemptionResult }}</p>
         </div>
         
-        <div class="exemption-list" *ngIf="exemptions.length > 0">
+        <div class="exemption-list" *ngIf="showOnlyExemption && exemptions.length > 0">
           <h4>設定済みの免除一覧</h4>
           <table class="exemption-table">
             <thead>
@@ -324,7 +323,9 @@ export interface InsuranceExemption {
     }
   `]
 })
-export class ImportComponent {
+export class ImportComponent implements OnInit {
+  @Input() showOnlyExemption: boolean = false; // 保険料免除設定のみを表示するかどうか
+  
   isImporting = false;
   importResult = '';
   importSuccess = false;
@@ -350,7 +351,15 @@ export class ImportComponent {
     private http: HttpClient,
     private cdr: ChangeDetectorRef
   ) {
-    this.loadExemptions();
+    // 保険料免除設定ページの場合のみ、免除設定を読み込む
+    // showOnlyExemptionは@Inputなので、ngOnInitでチェックする必要がある
+  }
+  
+  ngOnInit(): void {
+    // 保険料免除設定ページの場合のみ、免除設定を読み込む
+    if (this.showOnlyExemption) {
+      this.loadExemptions();
+    }
   }
   
   onStartMonthChange(): void {
