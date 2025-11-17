@@ -22,20 +22,9 @@ export interface InsuranceExemption {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="import-container">
-      <h2>{{ showOnlyExemption ? '保険料免除設定' : '社員情報設定' }}</h2>
-      <div *ngIf="!showOnlyExemption" class="import-section">
-        <h3>社員データインポート</h3>
-        <p class="description">給与データと賞与データをFirebaseにインポートします。</p>
-        <button (click)="importData()" [disabled]="isImporting" class="import-button">
-          {{ isImporting ? 'インポート中...' : '社員データインポート' }}
-        </button>
-        <div *ngIf="importResult" class="result" [class.success]="importSuccess" [class.error]="!importSuccess">
-          <p>{{ importResult }}</p>
-        </div>
-      </div>
-      
-      <div *ngIf="showOnlyExemption" class="import-section">
+    <div class="import-container" *ngIf="showOnlyExemption">
+      <h2>保険料免除設定</h2>
+      <div class="import-section">
         <p class="description">社員の保険料免除期間を設定します。設定した期間中は、該当社員の社会保険料が0円になります。</p>
         
         <form (ngSubmit)="addExemption()" class="exemption-form">

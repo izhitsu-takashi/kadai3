@@ -1,0 +1,537 @@
+{
+  "健康介護保険等級": [
+    {
+      "grade": 1,
+      "monthlyStandard": 58000,
+      "from": 0,
+      "to": 62999
+    },
+    {
+      "grade": 2,
+      "monthlyStandard": 68000,
+      "from": 63000,
+      "to": 72999
+    },
+    {
+      "grade": 3,
+      "monthlyStandard": 78000,
+      "from": 73000,
+      "to": 82999
+    },
+    {
+      "grade": 4,
+      "monthlyStandard": 88000,
+      "from": 83000,
+      "to": 92999
+    },
+    {
+      "grade": 5,
+      "monthlyStandard": 98000,
+      "from": 93000,
+      "to": 100999
+    },
+    {
+      "grade": 6,
+      "monthlyStandard": 104000,
+      "from": 101000,
+      "to": 106999
+    },
+    {
+      "grade": 7,
+      "monthlyStandard": 110000,
+      "from": 107000,
+      "to": 113999
+    },
+    {
+      "grade": 8,
+      "monthlyStandard": 118000,
+      "from": 114000,
+      "to": 121999
+    },
+    {
+      "grade": 9,
+      "monthlyStandard": 126000,
+      "from": 122000,
+      "to": 129999
+    },
+    {
+      "grade": 10,
+      "monthlyStandard": 134000,
+      "from": 130000,
+      "to": 137999
+    },
+    {
+      "grade": 11,
+      "monthlyStandard": 142000,
+      "from": 138000,
+      "to": 145999
+    },
+    {
+      "grade": 12,
+      "monthlyStandard": 150000,
+      "from": 146000,
+      "to": 154999
+    },
+    {
+      "grade": 13,
+      "monthlyStandard": 160000,
+      "from": 155000,
+      "to": 164999
+    },
+    {
+      "grade": 14,
+      "monthlyStandard": 170000,
+      "from": 165000,
+      "to": 174999
+    },
+    {
+      "grade": 15,
+      "monthlyStandard": 180000,
+      "from": 175000,
+      "to": 184999
+    },
+    {
+      "grade": 16,
+      "monthlyStandard": 190000,
+      "from": 185000,
+      "to": 194999
+    },
+    {
+      "grade": 17,
+      "monthlyStandard": 200000,
+      "from":195000,
+      "to": 209999
+    },
+    {
+      "grade": 18,
+      "monthlyStandard": 220000,
+      "from": 210000,
+      "to": 213999
+    },
+    {
+      "grade": 19,
+      "monthlyStandard": 240000,
+      "from": 230000,
+      "to": 249999
+    },
+    {
+      "grade": 20,
+      "monthlyStandard": 260000,
+      "from": 250000,
+      "to": 269999
+    },
+    {
+      "grade": 21,
+      "monthlyStandard": 280000,
+      "from": 270000,
+      "to": 289999
+    },
+    {
+      "grade": 22,
+      "monthlyStandard": 300000,
+      "from": 290000,
+      "to": 309999
+    },
+    {
+      "grade": 23,
+      "monthlyStandard": 320000,
+      "from": 310000,
+      "to": 329999
+    },
+    {
+      "grade": 24,
+      "monthlyStandard": 340000,
+      "from": 330000,
+      "to": 349999
+    },
+    {
+      "grade": 25,
+      "monthlyStandard": 360000,
+      "from": 350000,
+      "to": 369999
+    },
+    {
+      "grade": 26,
+      "monthlyStandard": 380000,
+      "from": 370000,
+      "to": 394999
+    },
+    {
+      "grade": 27,
+      "monthlyStandard": 410000,
+      "from": 395000,
+      "to": 424999
+    },
+    {
+      "grade": 28,
+      "monthlyStandard": 440000,
+      "from": 425000,
+      "to": 454999
+    },
+    {
+      "grade": 29,
+      "monthlyStandard": 470000,
+      "from": 455000,
+      "to": 484999
+    },
+    {
+      "grade": 30,
+      "monthlyStandard": 500000,
+      "from": 485000,
+      "to": 514999
+    },
+    {
+      "grade": 31,
+      "monthlyStandard": 530000,
+      "from": 515000,
+      "to": 544999
+    },
+    {
+      "grade": 32,
+      "monthlyStandard": 560000,
+      "from": 545000,
+      "to": 574999
+    },
+    {
+      "grade": 33,
+      "monthlyStandard": 590000,
+      "from": 575000,
+      "to": 604999
+    },
+    {
+      "grade": 34,
+      "monthlyStandard": 620000,
+      "from": 605000,
+      "to": 634999
+    },
+    {
+      "grade": 35,
+      "monthlyStandard": 650000,
+      "from": 635000,
+      "to": 664999
+    },
+    {
+      "grade": 36,
+      "monthlyStandard": 680000,
+      "from": 665000,
+      "to": 694999
+    },
+    {
+      "grade": 37,
+      "monthlyStandard": 710000,
+      "from": 695000,
+      "to": 729999
+    },
+    {
+      "grade": 38,
+      "monthlyStandard": 750000,
+      "from": 730000,
+      "to": 769999
+    },
+    {
+      "grade": 39,
+      "monthlyStandard": 790000,
+      "from": 770000,
+      "to": 809999
+    },
+    {
+      "grade": 40,
+      "monthlyStandard": 830000,
+      "from": 810000,
+      "to": 854999
+    },
+    {
+      "grade": 41,
+      "monthlyStandard": 880000,
+      "from": 855000,
+      "to": 904999
+    },
+    {
+      "grade": 42,
+      "monthlyStandard": 930000,
+      "from": 905000,
+      "to": 954999
+    },
+    {
+      "grade": 43,
+      "monthlyStandard": 980000,
+      "from": 955000,
+      "to": 1004999
+    },
+    {
+      "grade": 44,
+      "monthlyStandard": 1030000,
+      "from": 1005000,
+      "to": 1054999
+    },
+    {
+      "grade": 45,
+      "monthlyStandard": 1090000,
+      "from": 1055000,
+      "to": 1114999
+    },
+    {
+      "grade": 46,
+      "monthlyStandard": 1150000,
+      "from": 1115000,
+      "to": 1174999
+    },
+    {
+      "grade": 47,
+      "monthlyStandard": 1210000,
+      "from": 1175000,
+      "to": 1234999
+    },
+    {
+      "grade": 48,
+      "monthlyStandard": 1270000,
+      "from": 1235000,
+      "to": 1294999
+    },
+    {
+      "grade": 49,
+      "monthlyStandard": 1330000,
+      "from": 1295000,
+      "to": 1354999
+    },
+    {
+      "grade": 50,
+      "monthlyStandard": 1390000,
+      "from": 1355000,
+      "to": 1389999
+    },
+    {
+      "grade": 51,
+      "monthlyStandard": 1500000,
+      "from": 1390000,
+      "to": 1499999
+    },
+    {
+      "grade": 52,
+      "monthlyStandard": 1600000,
+      "from": 1500000,
+      "to": 1599999
+    },
+    {
+      "grade": 53,
+      "monthlyStandard": 1700000,
+      "from": 1600000,
+      "to": 1699999
+    },
+    {
+      "grade": 54,
+      "monthlyStandard": 1800000,
+      "from": 1700000,
+      "to": 1799999
+    },
+    {
+      "grade": 55,
+      "monthlyStandard": 1900000,
+      "from": 1800000,
+      "to": 1899999
+    },
+    {
+      "grade": 56,
+      "monthlyStandard": 2000000,
+      "from": 1900000,
+      "to": 9999999
+    }
+  ],
+
+
+
+  "厚生年金等級": [
+    {
+      "grade": 1,
+      "monthlyStandard": 88000,
+      "from": 83000,
+      "to": 92999
+    },
+    {
+      "grade": 2,
+      "monthlyStandard": 98000,
+      "from": 93000,
+      "to": 100999
+    },
+    {
+      "grade": 3,
+      "monthlyStandard": 104000,
+      "from": 101000,
+      "to": 106999
+    },
+    {
+      "grade": 4,
+      "monthlyStandard": 110000,
+      "from": 107000,
+      "to": 113999
+    },
+    {
+      "grade": 5,
+      "monthlyStandard": 118000,
+      "from": 114000,
+      "to": 121999
+    },
+    {
+      "grade": 6,
+      "monthlyStandard": 126000,
+      "from": 122000,
+      "to": 129999
+    },
+    {
+      "grade": 7,
+      "monthlyStandard": 134000,
+      "from": 130000,
+      "to": 137999
+    },
+    {
+      "grade": 8,
+      "monthlyStandard": 142000,
+      "from": 138000,
+      "to": 145999
+    },
+    {
+      "grade": 9,
+      "monthlyStandard": 150000,
+      "from": 146000,
+      "to": 154999
+    },
+    {
+      "grade": 10,
+      "monthlyStandard": 160000,
+      "from": 155000,
+      "to": 164999
+    },
+    {
+      "grade": 11,
+      "monthlyStandard": 170000,
+      "from": 165000,
+      "to": 174999
+    },
+    {
+    "grade": 12,
+      "monthlyStandard": 180000,
+      "from": 175000,
+      "to": 184999
+    },
+    {
+      "grade": 13,
+      "monthlyStandard": 190000,
+      "from": 185000,
+      "to": 194999
+    },
+    {
+      "grade": 14,
+      "monthlyStandard": 200000,
+      "from":195000,
+      "to": 209999
+    },
+    {
+      "grade": 15,
+      "monthlyStandard": 220000,
+      "from": 210000,
+      "to": 213999
+    },
+    {
+      "grade": 16,
+      "monthlyStandard": 240000,
+      "from": 230000,
+      "to": 249999
+    },
+    {
+      "grade": 17,
+      "monthlyStandard": 260000,
+      "from": 250000,
+      "to": 269999
+    },
+    {
+      "grade": 18,
+      "monthlyStandard": 280000,
+      "from": 270000,
+      "to": 289999
+    },
+    {
+      "grade": 19,
+      "monthlyStandard": 300000,
+      "from": 290000,
+      "to": 309999
+    },
+    {
+      "grade": 20,
+      "monthlyStandard": 320000,
+      "from": 310000,
+      "to": 329999
+    },
+    {
+      "grade": 21,
+      "monthlyStandard": 340000,
+      "from": 330000,
+      "to": 349999
+    },
+    {
+      "grade": 22,
+      "monthlyStandard": 360000,
+      "from": 350000,
+      "to": 369999
+    },
+    {
+      "grade": 23,
+      "monthlyStandard": 380000,
+      "from": 370000,
+      "to": 394999
+    },
+    {
+    "grade": 24,
+      "monthlyStandard": 410000,
+      "from": 395000,
+      "to": 424999
+    },
+    {
+      "grade": 25,
+      "monthlyStandard": 440000,
+      "from": 425000,
+      "to": 454999
+    },
+    {
+      "grade": 26,
+      "monthlyStandard": 470000,
+      "from": 455000,
+      "to": 484999
+    },
+    {
+      "grade": 27,
+      "monthlyStandard": 500000,
+      "from": 485000,
+      "to": 514999
+    },
+    {
+      "grade": 28,
+      "monthlyStandard": 530000,
+      "from": 515000,
+      "to": 544999
+    },
+    {
+      "grade": 29,
+      "monthlyStandard": 560000,
+      "from": 545000,
+      "to": 574999
+    },
+    {
+      "grade": 30,
+      "monthlyStandard": 590000,
+      "from": 575000,
+      "to": 604999
+    },
+    {
+      "grade": 31,
+      "monthlyStandard": 620000,
+      "from": 605000,
+      "to": 634999
+    },
+    {
+    "grade": 32,
+      "monthlyStandard": 650000,
+      "from": 635000,
+      "to": 9999999
+    }
+  ]
+}

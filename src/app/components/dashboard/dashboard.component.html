@@ -681,7 +681,69 @@
         </div>
       </div>
       <div *ngIf="selectedMenuId === 'employee-settings'" class="settings-page-container">
-        <app-import></app-import>
+        <div class="employee-settings-container">
+          <h2 class="form-title">社員情報設定</h2>
+          <p class="employee-settings-description">現在設定されている給与データ、賞与データ、等級データをJSONファイルとしてダウンロードできます。また、テンプレートファイルもダウンロードできます。</p>
+          
+          <div class="download-section">
+            <div class="download-card">
+              <h3 class="download-card-title">給与データ</h3>
+              <p class="download-card-description">現在設定されている給与データをダウンロードします。</p>
+              <button 
+                type="button"
+                class="download-button"
+                (click)="downloadSalaryData()"
+                [disabled]="isDownloadingSalary">
+                {{ isDownloadingSalary ? 'ダウンロード中...' : '給与データをダウンロード' }}
+              </button>
+              <button 
+                type="button"
+                class="download-button template-button"
+                (click)="downloadSalaryTemplate()"
+                [disabled]="isDownloadingSalaryTemplate">
+                {{ isDownloadingSalaryTemplate ? 'ダウンロード中...' : '給与テンプレートをダウンロード' }}
+              </button>
+            </div>
+            
+            <div class="download-card">
+              <h3 class="download-card-title">賞与データ</h3>
+              <p class="download-card-description">現在設定されている賞与データをダウンロードします。</p>
+              <button 
+                type="button"
+                class="download-button"
+                (click)="downloadBonusData()"
+                [disabled]="isDownloadingBonus">
+                {{ isDownloadingBonus ? 'ダウンロード中...' : '賞与データをダウンロード' }}
+              </button>
+              <button 
+                type="button"
+                class="download-button template-button"
+                (click)="downloadBonusTemplate()"
+                [disabled]="isDownloadingBonusTemplate">
+                {{ isDownloadingBonusTemplate ? 'ダウンロード中...' : '賞与テンプレートをダウンロード' }}
+              </button>
+            </div>
+            
+            <div class="download-card">
+              <h3 class="download-card-title">等級データ</h3>
+              <p class="download-card-description">現在設定されている等級データをダウンロードします。</p>
+              <button 
+                type="button"
+                class="download-button"
+                (click)="downloadGradeData()"
+                [disabled]="isDownloadingGrade">
+                {{ isDownloadingGrade ? 'ダウンロード中...' : '等級データをダウンロード' }}
+              </button>
+              <button 
+                type="button"
+                class="download-button template-button"
+                (click)="downloadGradeTemplate()"
+                [disabled]="isDownloadingGradeTemplate">
+                {{ isDownloadingGradeTemplate ? 'ダウンロード中...' : '等級テンプレートをダウンロード' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <div *ngIf="selectedMenuId === 'insurance-exemption-settings'" class="settings-page-container">
         <app-import [showOnlyExemption]="true"></app-import>

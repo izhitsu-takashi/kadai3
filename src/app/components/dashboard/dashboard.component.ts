@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { EmployeeService, Employee, Bonus } from '../../services/employee.service';
 import { FirestoreService } from '../../services/firestore.service';
 import { ImportComponent } from '../import/import.component';
@@ -168,6 +169,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private gradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 等級データ（健康保険・介護保険用）
   private welfarePensionGradeData: Array<{ grade: number; monthlyStandard: number; from: number; to: number }> = []; // 厚生年金保険等級データ
   private insuranceExemptions: Array<{ employeeId: number | string; startMonth: string; endMonth: string; reason: string }> = []; // 保険料免除設定
+  
+  // ダウンロード用フラグ
+  isDownloadingSalary: boolean = false;
+  isDownloadingBonus: boolean = false;
+  isDownloadingGrade: boolean = false;
+  isDownloadingSalaryTemplate: boolean = false;
+  isDownloadingBonusTemplate: boolean = false;
+  isDownloadingGradeTemplate: boolean = false;
   
   // 給与/賞与の切り替え
   tableType: 'salary' | 'bonus' = 'salary';
@@ -5033,5 +5042,250 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       console.error('Error auto-saving health insurance settings:', error);
     }
   }
+
+  // 給与データをダウンロード
+  async downloadSalaryData(): Promise<void> {
+    this.isDownloadingSalary = true;
+    try {
+      // 全給与データを取得
+      const employees = await firstValueFrom(this.employeeService.getEmployees());
+      if (!employees || employees.length === 0) {
+        alert('給与データがありません。');
+        this.isDownloadingSalary = false;
+        return;
+      }
+
+      // 月ごとにグループ化
+      const groupedData: { [key: string]: any[] } = {};
+      employees.forEach(emp => {
+        const month = emp.月 || emp.month || '';
+        if (!month) return;
+        
+        if (!groupedData[month]) {
+          groupedData[month] = [];
+        }
+        
+        // idフィールドを除外してデータを追加
+        const { id, ...empData } = emp;
+        groupedData[month].push(empData);
+      });
+
+      // 月を時系列順にソート
+      const sortedMonths = Object.keys(groupedData).sort((a, b) => {
+        // "YYYY年MM月"形式を数値に変換して比較
+        const aNum = this.monthToNumber(a);
+        const bNum = this.monthToNumber(b);
+        return aNum - bNum;
+      });
+
+      // ソートされた順序で新しいオブジェクトを作成
+      const sortedData: { [key: string]: any[] } = {};
+      sortedMonths.forEach(month => {
+        sortedData[month] = groupedData[month];
+      });
+
+      // JSONファイルとしてダウンロード
+      const jsonStr = JSON.stringify(sortedData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `給与データ_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading salary data:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isDownloadingSalary = false;
+    }
+  }
+
+  // 賞与データをダウンロード
+  async downloadBonusData(): Promise<void> {
+    this.isDownloadingBonus = true;
+    try {
+      // 全賞与データを取得
+      const bonuses = await firstValueFrom(this.employeeService.getBonuses());
+      if (!bonuses || bonuses.length === 0) {
+        alert('賞与データがありません。');
+        this.isDownloadingBonus = false;
+        return;
+      }
+
+      // 月ごとにグループ化
+      const groupedData: { [key: string]: any[] } = {};
+      bonuses.forEach(bonus => {
+        const month = bonus.月 || bonus['month'] || '';
+        if (!month) return;
+        
+        if (!groupedData[month]) {
+          groupedData[month] = [];
+        }
+        
+        // idフィールドを除外してデータを追加
+        const { id, ...bonusData } = bonus;
+        groupedData[month].push(bonusData);
+      });
+
+      // 月を時系列順にソート
+      const sortedMonths = Object.keys(groupedData).sort((a, b) => {
+        // "YYYY年MM月"形式を数値に変換して比較
+        const aNum = this.monthToNumber(a);
+        const bNum = this.monthToNumber(b);
+        return aNum - bNum;
+      });
+
+      // ソートされた順序で新しいオブジェクトを作成
+      const sortedData: { [key: string]: any[] } = {};
+      sortedMonths.forEach(month => {
+        sortedData[month] = groupedData[month];
+      });
+
+      // JSONファイルとしてダウンロード
+      const jsonStr = JSON.stringify(sortedData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `賞与データ_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading bonus data:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isDownloadingBonus = false;
+    }
+  }
+
+  // 等級データをダウンロード
+  async downloadGradeData(): Promise<void> {
+    this.isDownloadingGrade = true;
+    try {
+      // 等級データを読み込む
+      const gradeData = await firstValueFrom(this.http.get<any>('/assets/等級.json'));
+      if (!gradeData) {
+        alert('等級データが読み込めませんでした。');
+        this.isDownloadingGrade = false;
+        return;
+      }
+
+      // JSONファイルとしてダウンロード
+      const jsonStr = JSON.stringify(gradeData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `等級データ_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading grade data:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isDownloadingGrade = false;
+    }
+  }
+
+  // 給与テンプレートをダウンロード
+  async downloadSalaryTemplate(): Promise<void> {
+    this.isDownloadingSalaryTemplate = true;
+    try {
+      // テンプレートファイルを読み込む
+      const templateData = await firstValueFrom(this.http.get<any>('/assets/給与テンプレート.json'));
+      if (!templateData) {
+        alert('テンプレートファイルが読み込めませんでした。');
+        this.isDownloadingSalaryTemplate = false;
+        return;
+      }
+
+      // JSONファイルとしてダウンロード
+      const jsonStr = JSON.stringify(templateData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '給与テンプレート.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading salary template:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isDownloadingSalaryTemplate = false;
+    }
+  }
+
+  // 賞与テンプレートをダウンロード
+  async downloadBonusTemplate(): Promise<void> {
+    this.isDownloadingBonusTemplate = true;
+    try {
+      // テンプレートファイルを読み込む
+      const templateData = await firstValueFrom(this.http.get<any>('/assets/賞与テンプレート.json'));
+      if (!templateData) {
+        alert('テンプレートファイルが読み込めませんでした。');
+        this.isDownloadingBonusTemplate = false;
+        return;
+      }
+
+      // JSONファイルとしてダウンロード
+      const jsonStr = JSON.stringify(templateData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '賞与テンプレート.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading bonus template:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isDownloadingBonusTemplate = false;
+    }
+  }
+
+  // 等級テンプレートをダウンロード
+  async downloadGradeTemplate(): Promise<void> {
+    this.isDownloadingGradeTemplate = true;
+    try {
+      // テンプレートファイルを読み込む
+      const templateData = await firstValueFrom(this.http.get<any>('/assets/等級テンプレート.json'));
+      if (!templateData) {
+        alert('テンプレートファイルが読み込めませんでした。');
+        this.isDownloadingGradeTemplate = false;
+        return;
+      }
+
+      // JSONファイルとしてダウンロード
+      const jsonStr = JSON.stringify(templateData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '等級テンプレート.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading grade template:', error);
+      alert(`エラーが発生しました: ${error.message || error}`);
+    } finally {
+      this.isDownloadingGradeTemplate = false;
+    }
+  }
+
 }
 

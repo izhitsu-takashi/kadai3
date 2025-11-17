@@ -599,6 +599,90 @@
   margin: 0 0 2rem 0;
 }
 
+/* 社員情報設定ページ */
+.employee-settings-container {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.employee-settings-description {
+  font-size: 1rem;
+  color: #4a5568;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.download-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.download-card {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.download-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.download-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 0.75rem 0;
+}
+
+.download-card-description {
+  font-size: 0.95rem;
+  color: #4a5568;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.6;
+}
+
+.download-button {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-button:hover:not(:disabled) {
+  background: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.download-button:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.download-button.template-button {
+  margin-top: 0.75rem;
+  background: #48bb78;
+}
+
+.download-button.template-button:hover:not(:disabled) {
+  background: #38a169;
+  box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
 .company-form {
   display: flex;
   flex-direction: column;
