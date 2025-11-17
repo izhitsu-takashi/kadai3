@@ -258,6 +258,29 @@
                 placeholder="所在地（住所）を入力してください">
             </div>
             <div class="form-group">
+              <label class="form-label">適用事業所種別</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="establishmentType" 
+                    value="mandatory"
+                    [(ngModel)]="companyInfo.establishmentType"
+                    [disabled]="!isCompanyInfoEditing">
+                  <span>強制</span>
+                </label>
+                <label class="radio-label">
+                  <input 
+                    type="radio" 
+                    name="establishmentType" 
+                    value="optional"
+                    [(ngModel)]="companyInfo.establishmentType"
+                    [disabled]="!isCompanyInfoEditing">
+                  <span>任意</span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group">
               <label class="form-label">社会保険料徴収月</label>
               <div class="radio-group">
                 <label class="radio-label">

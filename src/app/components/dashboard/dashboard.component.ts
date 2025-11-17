@@ -96,6 +96,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   companyInfo = {
     companyName: '',
     address: '',
+    establishmentType: 'mandatory' as 'mandatory' | 'optional', // 適用事業所種別（強制/任意）
     socialInsuranceCollectionMonth: 'current' as 'current' | 'next' // 社会保険料徴収月（当月/翌月）
   };
   isCompanyInfoSaved: boolean = false;
@@ -3136,6 +3137,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.companyInfo = {
           companyName: data['companyName'] || '',
           address: data['address'] || '',
+          establishmentType: data['establishmentType'] || 'mandatory',
           socialInsuranceCollectionMonth: data['socialInsuranceCollectionMonth'] || 'current'
         };
         // データが存在する場合は保存済み状態にする
@@ -3164,6 +3166,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       await setDoc(docRef, {
         companyName: this.companyInfo.companyName,
         address: this.companyInfo.address,
+        establishmentType: this.companyInfo.establishmentType,
         socialInsuranceCollectionMonth: this.companyInfo.socialInsuranceCollectionMonth,
         updatedAt: new Date()
       }, { merge: true });
@@ -4757,6 +4760,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       await setDoc(docRef, {
         companyName: this.companyInfo.companyName,
         address: this.companyInfo.address,
+        establishmentType: this.companyInfo.establishmentType,
         socialInsuranceCollectionMonth: this.companyInfo.socialInsuranceCollectionMonth,
         updatedAt: new Date()
       }, { merge: true });
