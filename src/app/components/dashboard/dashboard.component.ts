@@ -295,7 +295,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   salaryColumns = [
     { key: 'id', label: '社員ID', type: 'number', sortable: true },
     { key: 'name', label: '氏名', type: 'string', sortable: false },
-    { key: 'salary', label: '給与', type: 'number', sortable: false },
+    { key: 'fixedSalaryTotal', label: '固定的賃金総額', type: 'number', sortable: false },
     { key: 'standardSalary', label: '標準報酬月額', type: 'number', sortable: false },
     { key: 'healthInsurance', label: '健康保険料', type: 'number', sortable: false },
     { key: 'welfarePension', label: '厚生年金保険料', type: 'number', sortable: false },
@@ -991,6 +991,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // すべてのデータを読み込んで利用可能な月のリストを取得
     this.employeeService.getEmployees().subscribe({
       next: (data) => {
+        // 各従業員の固定的賃金総額を計算して設定
+        data.forEach(employee => {
+          const fixedSalaryTotal = this.calculateFixedSalaryTotal(employee);
+          (employee as any).固定的賃金総額 = fixedSalaryTotal;
+          (employee as any).fixedSalaryTotal = fixedSalaryTotal;
+        });
+        
         // 全期間の給与データを保持（標準報酬月額の計算に使用）
         this.allEmployeesData = data;
         const monthsSet = new Set<string>();
@@ -1113,6 +1120,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.employeeService.getEmployees(this.selectedMonth).subscribe({
       next: (data) => {
+        // 各従業員の固定的賃金総額を計算して設定
+        data.forEach(employee => {
+          const fixedSalaryTotal = this.calculateFixedSalaryTotal(employee);
+          (employee as any).固定的賃金総額 = fixedSalaryTotal;
+          (employee as any).fixedSalaryTotal = fixedSalaryTotal;
+        });
+        
         this.employees = data;
         // データ読み込み完了後に表示列設定を読み込む
         if (this.tableType === 'salary' && this.availableColumns.length === 0) {
@@ -2019,7 +2033,29 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.floor(bonus / 1000) * 1000;
   }
 
+  /**
+   * 固定的賃金総額を計算（列名に「（固定的賃金）」が含まれる列の合計）
+   */
+  calculateFixedSalaryTotal(employee: Employee | Bonus): number {
+    let total = 0;
+    for (const key in employee) {
+      if (employee.hasOwnProperty(key) && key.includes('（固定的賃金）')) {
+        const value = (employee as any)[key];
+        if (typeof value === 'number') {
+          total += value;
+        }
+      }
+    }
+    return total;
+  }
+
   getSalary(employee: Employee | Bonus): number {
+    // 固定的賃金総額を参照
+    const fixedSalaryTotal = (employee as any).固定的賃金総額 ?? (employee as any).fixedSalaryTotal;
+    if (fixedSalaryTotal !== undefined && fixedSalaryTotal !== null) {
+      return fixedSalaryTotal;
+    }
+    // フォールバック: 旧来の「給与」列（後方互換性のため）
     return (employee as any).給与 ?? (employee as any).salary ?? 0;
   }
 
@@ -2678,7 +2714,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       '健康介護保険等級', 'grade',
       '厚生年金保険等級',
       '標準報酬月額算出基準給与', 'standardSalaryCalculationBase',
-      '標準報酬月額算出方法', 'standardSalaryCalculationMethod'
+      '標準報酬月額算出方法', 'standardSalaryCalculationMethod',
+      // 内部的に使用するキーを除外
+      'fixedSalaryTotal'
     ];
     
     const fields: Array<{ key: string; value: any }> = [];
@@ -2732,6 +2770,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       '入社日': '入社日',
       '給与': '給与',
       'salary': '給与',
+      '固定的賃金総額': '固定的賃金総額',
+      'fixedSalaryTotal': '固定的賃金総額',
       '賞与': '賞与',
       'bonus': '賞与',
       '標準報酬月額': '標準報酬月額',
@@ -2836,6 +2876,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const defaultKeyToJsonKeyMap: { [key: string]: string[] } = {
       'id': ['ID', 'id'],
       'name': ['氏名', 'name'],
+      'fixedSalaryTotal': ['固定的賃金総額', 'fixedSalaryTotal'],
       'salary': ['給与', 'salary'],
       'bonus': ['賞与', 'bonus']
     };
@@ -3053,7 +3094,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   openFilterCustomizationModal(): void {
     this.initializeAvailableColumns(true);
     // フィルター不可の列のキー
-    const nonFilterableKeys = ['salary', '給与', 'bonus', '賞与', 'standardSalary', '標準報酬月額', 'standardBonus', '標準賞与額', 
+    const nonFilterableKeys = ['fixedSalaryTotal', '固定的賃金総額', 'salary', '給与', 'bonus', '賞与', 'standardSalary', '標準報酬月額', 'standardBonus', '標準賞与額', 
                                 'healthInsurance', '健康保険料', 'welfarePension', '厚生年金保険料', 
                                 'nursingInsurance', '介護保険料', 'personalBurden', '社員負担額', '本人負担額'];
     
@@ -3108,7 +3149,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.getEmployeeId(employee);
       case 'name':
         return this.getEmployeeName(employee);
+      case 'fixedSalaryTotal':
+        return this.getSalary(employee);
       case 'salary':
+        // 後方互換性のため残す
         return this.getSalary(employee);
       case 'bonus':
         return this.getEmployeeField(employee, '賞与') || this.getEmployeeField(employee, 'bonus') || 0;
@@ -3263,6 +3307,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 給与データを読み込む
     this.employeeService.getEmployees().subscribe({
       next: (data) => {
+        // 各従業員の固定的賃金総額を計算して設定
+        data.forEach(employee => {
+          const fixedSalaryTotal = this.calculateFixedSalaryTotal(employee);
+          (employee as any).固定的賃金総額 = fixedSalaryTotal;
+          (employee as any).fixedSalaryTotal = fixedSalaryTotal;
+        });
+        
         this.reportEmployees = data;
         
         // 利用可能な年を取得（年度単位：4月～来年3月）
