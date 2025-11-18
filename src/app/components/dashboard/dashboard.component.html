@@ -659,6 +659,10 @@
             <div class="download-card">
               <h3 class="download-card-title">給与データ</h3>
               <p class="download-card-description">現在設定されている給与データをダウンロードします。</p>
+              <div *ngIf="uploadInfo.salary" class="upload-info">
+                <p class="upload-info-text">最新アップデート：{{ uploadInfo.salary.timestamp }}</p>
+                <p class="upload-info-text">ファイル名：{{ uploadInfo.salary.filename }}</p>
+              </div>
               <button 
                 type="button"
                 class="download-button"
@@ -683,6 +687,10 @@
             <div class="download-card">
               <h3 class="download-card-title">賞与データ</h3>
               <p class="download-card-description">現在設定されている賞与データをダウンロードします。</p>
+              <div *ngIf="uploadInfo.bonus" class="upload-info">
+                <p class="upload-info-text">最新アップデート：{{ uploadInfo.bonus.timestamp }}</p>
+                <p class="upload-info-text">ファイル名：{{ uploadInfo.bonus.filename }}</p>
+              </div>
               <button 
                 type="button"
                 class="download-button"
@@ -707,6 +715,10 @@
             <div class="download-card">
               <h3 class="download-card-title">等級データ</h3>
               <p class="download-card-description">現在設定されている等級データをダウンロードします。</p>
+              <div *ngIf="uploadInfo.grade" class="upload-info">
+                <p class="upload-info-text">最新アップデート：{{ uploadInfo.grade.timestamp }}</p>
+                <p class="upload-info-text">ファイル名：{{ uploadInfo.grade.filename }}</p>
+              </div>
               <button 
                 type="button"
                 class="download-button"

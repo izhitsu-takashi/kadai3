@@ -478,7 +478,7 @@
   align-items: center;
   padding: 1rem 1.5rem;
   background: #f7fafc;
-  border-bottom: 1px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
   font-size: 1.2rem;
   width: 100%;
   box-sizing: border-box;
@@ -699,6 +699,29 @@
 .download-button.template-button:hover:not(:disabled) {
   background: #38a169;
   box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
+.upload-info {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.upload-info-text {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+.upload-info-text:first-child {
+  margin-top: 0;
+}
+
+.upload-info-text:last-child {
+  margin-bottom: 0;
 }
 
 .upload-section {

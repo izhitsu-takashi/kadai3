@@ -94,6 +94,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   // モーダル用
   isModalOpen: boolean = false;
   selectedEmployee: Employee | Bonus | null = null;
+  private cachedEmployeeFields: Array<{ key: string; value: any }> | null = null;
 
   // 企業情報設定用
   companyInfo = {
@@ -204,6 +205,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     current: 0,
     total: 0,
     message: ''
+  };
+  
+  // アップロード情報
+  uploadInfo: {
+    salary: { timestamp: string; filename: string } | null;
+    bonus: { timestamp: string; filename: string } | null;
+    grade: { timestamp: string; filename: string } | null;
+  } = {
+    salary: null,
+    bonus: null,
+    grade: null
   };
   
   // 給与/賞与の切り替え
@@ -359,7 +371,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // 保存された設定情報を読み込む
     Promise.all([
       this.loadCompanyInfo(),
-      this.loadHealthInsuranceSettings()
+      this.loadHealthInsuranceSettings(),
+      this.loadUploadInfo()
     ]).then(() => {
       // 健康保険設定の読み込み完了をカウント
       this.checkInitialDataLoadComplete();
@@ -2553,13 +2566,46 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // モーダル関連のメソッド
   openEmployeeModal(employee: Employee | Bonus): void {
+    // データが正しく初期化されているかチェック
+    if (!employee) {
+      return;
+    }
+    
+    // モーダルを開く前に、必要なデータが読み込まれているか確認
+    // データが読み込み中の場合は、少し待ってから再度試行
+    if (this.isInitialDataLoading || this.isLoading) {
+      // データ読み込み完了を待つ（最大5秒まで待機）
+      let retryCount = 0;
+      const maxRetries = 50; // 100ms * 50 = 5秒
+      const checkDataReady = () => {
+        retryCount++;
+        if ((this.isInitialDataLoading || this.isLoading) && retryCount < maxRetries) {
+          setTimeout(checkDataReady, 100);
+        } else {
+          // データが読み込まれたか、タイムアウトした場合
+          this.selectedEmployee = employee;
+          this.isModalOpen = true;
+          // キャッシュをクリアして再計算
+          this.cachedEmployeeFields = null;
+          this.cdr.detectChanges();
+        }
+      };
+      setTimeout(checkDataReady, 100);
+      return;
+    }
+    
     this.selectedEmployee = employee;
     this.isModalOpen = true;
+    // キャッシュをクリアして再計算
+    this.cachedEmployeeFields = null;
+    this.cdr.detectChanges();
   }
 
   closeEmployeeModal(): void {
     this.isModalOpen = false;
     this.selectedEmployee = null;
+    // モーダルを閉じる際にキャッシュをクリア（メモリリークを防ぐ）
+    this.cachedEmployeeFields = null;
   }
 
 
@@ -2612,6 +2658,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return [];
     }
 
+    // キャッシュをチェック（selectedEmployeeと同じオブジェクトの場合のみ）
+    if (this.cachedEmployeeFields && this.selectedEmployee === employee) {
+      return this.cachedEmployeeFields;
+    }
+
     // 除外するキー（Firestoreのメタデータ、計算済みフィールドなど）
     const excludedKeys = [
       'id', '月', 'month',
@@ -2657,6 +2708,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!addedKeys.has(key)) {
         fields.push(field);
       }
+    }
+    
+    // キャッシュに保存（selectedEmployeeと同じオブジェクトの場合のみ）
+    if (this.selectedEmployee === employee) {
+      this.cachedEmployeeFields = fields;
     }
     
     return fields;
@@ -3892,6 +3948,51 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error loading insurance rate settings:', error);
+    }
+  }
+
+  // アップロード情報をFirestoreに保存
+  async saveUploadInfo(): Promise<void> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) {
+      return;
+    }
+
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'uploadInfo', 'settings');
+      await setDoc(docRef, {
+        salary: this.uploadInfo.salary,
+        bonus: this.uploadInfo.bonus,
+        grade: this.uploadInfo.grade
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error saving upload info:', error);
+    }
+  }
+
+  // アップロード情報をFirestoreから読み込む
+  async loadUploadInfo(): Promise<void> {
+    const firestore = this.firestoreService.getFirestore();
+    if (!firestore) {
+      return;
+    }
+
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const docRef = doc(firestore, 'uploadInfo', 'settings');
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        this.uploadInfo = {
+          salary: data['salary'] || null,
+          bonus: data['bonus'] || null,
+          grade: data['grade'] || null
+        };
+      }
+    } catch (error) {
+      console.error('Error loading upload info:', error);
     }
   }
 
@@ -6151,6 +6252,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // アップロード情報を記録
+    const uploadTimestamp = new Date().toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    this.uploadInfo.salary = {
+      timestamp: uploadTimestamp,
+      filename: file.name
+    };
+    await this.saveUploadInfo();
+
     this.isUploadingSalary = true;
     this.uploadProgress = {
       isUploading: true,
@@ -6229,6 +6345,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // アップロード情報を記録
+    const uploadTimestamp = new Date().toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    this.uploadInfo.bonus = {
+      timestamp: uploadTimestamp,
+      filename: file.name
+    };
+    await this.saveUploadInfo();
+
     this.isUploadingBonus = true;
     this.uploadProgress = {
       isUploading: true,
@@ -6306,6 +6437,21 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       event.target.value = ''; // ファイル選択をリセット
       return;
     }
+
+    // アップロード情報を記録
+    const uploadTimestamp = new Date().toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    this.uploadInfo.grade = {
+      timestamp: uploadTimestamp,
+      filename: file.name
+    };
+    await this.saveUploadInfo();
 
     this.isUploadingGrade = true;
     this.uploadProgress = {

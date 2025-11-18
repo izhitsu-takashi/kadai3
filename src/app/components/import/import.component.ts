@@ -97,7 +97,7 @@ export interface InsuranceExemption {
           <div class="form-actions">
             <button type="submit" class="submit-button" [disabled]="isSavingExemption">
               {{ isSavingExemption ? '保存中...' : '追加' }}
-            </button>
+        </button>
           </div>
         </form>
         
